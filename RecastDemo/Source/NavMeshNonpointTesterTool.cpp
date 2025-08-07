@@ -222,23 +222,23 @@ void NavMeshNonpointTesterTool::handleMenu()
 			{
 				float vertCount = poly->vertCount;
 
-				imguiSlider("Debug Vertex Index", &m_debugVertexIdx, 0.0f, vertCount, 1.0f);
+				imguiSlider("Debug Vertex Index", &m_debugVertexIdx, 0.0f, vertCount - 1.0f, 1.0f);
 				m_debugVertexIdx = dtClamp(m_debugVertexIdx, 0.0f, vertCount);
 
 				float edgeCount = DT_VERTS_PER_POLYGON + (vertCount - 3) * 2;
-				imguiSlider("Debug Edge Index", &m_debugEdgeIdx, 0.0f, vertCount, 1.0f);
+				imguiSlider("Debug Edge Index", &m_debugEdgeIdx, 0.0f, vertCount - 1.0f, 1.0f);
 
 				if (m_debugEdgeIdx < DT_VERTS_PER_POLYGON)
 				{
-					m_debugEdgeIdx = dtClamp(m_debugEdgeIdx, 0.0f, vertCount);
+					m_debugEdgeIdx = dtClamp(m_debugEdgeIdx, 0.0f, vertCount - 1.0f);
 				}
 				else
 				{
-					m_debugEdgeIdx = dtClamp(m_debugEdgeIdx, (float)DT_VERTS_PER_POLYGON, edgeCount);
+					m_debugEdgeIdx = dtClamp(m_debugEdgeIdx, (float)DT_VERTS_PER_POLYGON, edgeCount - 1.0f);
 				}
 
 				float faceCount = vertCount - 2;
-				imguiSlider("Debug Face Index", &m_debugFaceIdx, 0.0f, faceCount, 1.0f);
+				imguiSlider("Debug Face Index", &m_debugFaceIdx, 0.0f, faceCount - 1.0f, 1.0f);
 				m_debugFaceIdx = dtClamp(m_debugFaceIdx, 0.0f, faceCount);
 			}
 		}

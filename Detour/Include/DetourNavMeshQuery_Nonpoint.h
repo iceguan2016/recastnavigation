@@ -122,7 +122,8 @@ namespace queriers
 		if (vertex.getTileAndPoly(&tile, &poly))
 		{
 			dtAssert(vertex.innerIdx < poly->vertCount);
-			auto v = &tile->verts[poly->verts[vertex.innerIdx]];
+			auto vi = poly->verts[vertex.innerIdx];
+			auto v = &tile->verts[vi*3];
 			dtVcopy(pos, v);
 			return true;
 		}
