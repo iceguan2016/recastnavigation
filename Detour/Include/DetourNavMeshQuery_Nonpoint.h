@@ -508,4 +508,9 @@ namespace iterations
 		dtInternalFace _resultFace;
 	};
 }
+
+namespace astar
+{
+	
+}
 #endif // DETOURNAVMESHQUERY_NONPOINT_H
