@@ -1,4 +1,4 @@
-#define _USE_MATH_DEFINES
+﻿#define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -232,14 +232,29 @@ void NavMeshNonpointTesterTool::handleMenu()
 
 				clampValues();
 
+				
 				{
 					dtInternalVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
+
+					char buff[1024];
+
+					// 显示face的顶点索引
 					dtInternalVertex verts[3];
 					iterations::fromFaceToVertices iterFaceVerts(face);
-					auto num = iterFaceVerts.allVertices(verts, 3);
-					dtAssert(num == 3);
-					char buff[1024];
+					auto num_verts = iterFaceVerts.allVertices(verts, 3);
+					dtAssert(num_verts == 3);
 					sprintf_s(buff, 1024, "face verts:[%d, %d, %d]", verts[0].innerIdx, verts[1].innerIdx, verts[2].innerIdx);
+					imguiValue(buff);
+
+					// 显示face的邻接face
+					dtInternalFace faces[3];
+					iterations::fromFaceToNeighborFace iterNeiFaces(face);
+					auto num_faces = iterNeiFaces.allFaces(faces, 3);
+					sprintf_s(
+					buff, 
+					1024, 
+					"nei faces:{%ld[%d], %ld[%d], %ld[%d]}", 
+					faces[0].polyId, faces[0].innerIdx, faces[1].polyId, faces[1].innerIdx, faces[2].polyId, faces[2].innerIdx);
 					imguiValue(buff);
 				}
 			}

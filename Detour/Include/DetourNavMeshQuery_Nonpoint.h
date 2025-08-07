@@ -234,7 +234,7 @@ namespace queriers
 				unsigned char edgeIdx = edge.innerIdx;
 				unsigned short nei = poly->neis[edgeIdx];
 
-				if ((nei & DT_EXT_LINK) == 0)
+				if (nei & DT_EXT_LINK)
 				{
 					// Tile border.
 					for (unsigned int k = poly->firstLink; k != DT_NULL_LINK; k = tile->links[k].next)
@@ -250,7 +250,7 @@ namespace queriers
 						}
 					}
 				}
-				else
+				else if (nei > 0)
 				{
 					// Portal edge
 					const unsigned int idx = (unsigned int)(nei - 1);
@@ -499,12 +499,20 @@ namespace iterations
 		{
 			if (_nextEdge.isValid()) 
 			{
-				_resultFace = queriers::edgeRightFace(_nextEdge);
-				_nextEdge = queriers::edgeNextLeftEdge(_nextEdge);
-				if (_nextEdge == _fromFaceEdge)
+				do
 				{
-					_nextEdge = dtInternalEdge::INVALID;
-				}
+					_resultFace = queriers::edgeRightFace(_nextEdge);
+					_nextEdge = queriers::edgeNextLeftEdge(_nextEdge);
+					if (_nextEdge == _fromFaceEdge)
+					{
+						_nextEdge = dtInternalEdge::INVALID;
+						break;
+					}
+					if (_resultFace.isValid())
+					{
+						break;
+					}
+				} while (true);
 			}
 			else
 			{
@@ -512,6 +520,24 @@ namespace iterations
 			}
 
 			return _resultFace;
+		}
+
+		int allFaces(dtInternalFace* outFaces, int maxFaceNum)
+		{
+			int fi = 0;
+			do
+			{
+				if (fi >= maxFaceNum)
+					break;
+
+				auto f = next();
+				if (!f.isValid())
+					break;
+				
+				outFaces[fi] = f;
+				++fi;
+			} while (true);
+			return fi;
 		}
 
 		dtInternalFace _fromFace;
