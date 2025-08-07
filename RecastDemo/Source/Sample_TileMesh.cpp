@@ -37,6 +37,7 @@
 #include "DetourNavMeshBuilder.h"
 #include "DetourDebugDraw.h"
 #include "NavMeshTesterTool.h"
+#include "NavMeshNonpointTesterTool.h"
 #include "NavMeshPruneTool.h"
 #include "OffMeshConnectionTool.h"
 #include "ConvexVolumeTool.h"
@@ -305,6 +306,10 @@ void Sample_TileMesh::handleTools()
 	if (imguiCheck("Test Navmesh", type == TOOL_NAVMESH_TESTER))
 	{
 		setTool(new NavMeshTesterTool);
+	}
+	if (imguiCheck("Test Navmesh Nonpoint", type == TOOL_NAVMESH_NONPOINT_TESTER))
+	{
+		setTool(new NavMeshNonpointTesterTool);
 	}
 	if (imguiCheck("Prune Navmesh", type == TOOL_NAVMESH_PRUNE))
 	{

@@ -24,6 +24,7 @@ class NavMeshNonpointTesterTool : public SampleTool
 	{
 		TOOLMODE_PATHFIND_SET_GOAL,
 		TOOLMODE_PATHFIND_FIND_PATH,
+		TOOLMODE_DEBUG_DRAW_PRIMITIVES,
 	};
 
 	ToolMode m_toolMode;
@@ -44,10 +45,17 @@ class NavMeshNonpointTesterTool : public SampleTool
 	bool m_sposSet;
 	bool m_eposSet;
 
+	float		m_dpos[3];
+	bool		m_dposSet;
+	dtPolyRef	m_debugPolyRef;
+	float		m_debugVertexIdx;
+	float		m_debugEdgeIdx;
+	float		m_debugFaceIdx;
+
 public:
 	NavMeshNonpointTesterTool();
 
-	virtual int type() { return TOOL_NAVMESH_TESTER; }
+	virtual int type() { return TOOL_NAVMESH_NONPOINT_TESTER; }
 	virtual void init(Sample* sample);
 	virtual void reset();
 	virtual void handleMenu();
