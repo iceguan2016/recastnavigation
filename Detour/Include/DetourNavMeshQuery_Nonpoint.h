@@ -146,7 +146,7 @@ namespace queriers
 			{
 				// 新增内部边(起点)
 				auto idx = edge.innerIdx - DT_VERTS_PER_POLYGON;
-				return (idx & 0x1) == 1 ? dtInternalVertex(edge.navmesh, edge.polyId, 0) : dtInternalVertex(edge.navmesh, edge.polyId, idx + 2);
+				return (idx & 0x1) == 1 ? dtInternalVertex(edge.navmesh, edge.polyId, 0) : dtInternalVertex(edge.navmesh, edge.polyId, idx/2 + 2);
 			}
 		}
 		return dtInternalVertex::INVALID;
@@ -167,7 +167,7 @@ namespace queriers
 			{
 				// 新增内部边(终点)
 				auto idx = edge.innerIdx - DT_VERTS_PER_POLYGON;
-				return (idx & 0x1) == 0 ? dtInternalVertex(edge.navmesh, edge.polyId, 0) : dtInternalVertex(edge.navmesh, edge.polyId, idx + 2);
+				return (idx & 0x1) == 0 ? dtInternalVertex(edge.navmesh, edge.polyId, 0) : dtInternalVertex(edge.navmesh, edge.polyId, idx/2 + 2);
 			}
 		}
 		return dtInternalVertex::INVALID;
@@ -287,7 +287,7 @@ namespace queriers
 				auto i = face.innerIdx;
 				// N = poly->vertCount, 表示总边数
 				// i == 0				=> [0, 1, 6]
-				// i > 0 && i < N-3		=> [7 + (i-1)*2, i, 8 + (i-1)*2]
+				// i > 0 && i < N-3		=> [7 + (i-1)*2, i+1, 8 + (i-1)*2]
 				// i == N-3				=> [7 + (i-1)*2, i+1, i+2]
 
 				if (i == 0)
@@ -296,11 +296,11 @@ namespace queriers
 				}
 				else if (i == poly->vertCount - 3)
 				{
-					edges[0] = 7 + (i - 1) * 2; edges[1] = i; edges[2] = 8 + (i - 1) * 2;
+					edges[0] = 7 + (i - 1) * 2; edges[1] = i + 1; edges[2] = i + 2;
 				}
 				else
 				{
-					edges[0] = 7 + (i - 1) * 2; edges[1] = i + 1; edges[2] = i + 2;
+					edges[0] = 7 + (i - 1) * 2; edges[1] = i + 1; edges[2] = 8 + (i - 1) * 2;
 				}
 			}
 

@@ -68,6 +68,8 @@ public:
 
 	void recalc();
 	void drawAgent(const float* pos, float r, float h, float c, const unsigned int col);
+
+	void clampValues();
 };
 
 #endif // NAVMESH_NONPOINT_TESTERTOOL_H

@@ -82,6 +82,7 @@ void duDebugDrawInternalFace(duDebugDraw* dd, const dtInternalFace& face, unsign
 	
 	dd->depthMask(false);
 
+	dd->begin(DU_DRAW_TRIS);
 	for (int i = 0; i < 3; ++i)
 	{
 		float v[3];
@@ -89,8 +90,8 @@ void duDebugDrawInternalFace(duDebugDraw* dd, const dtInternalFace& face, unsign
 
 		v[1] += debugYOffset;
 		dd->vertex(v, col);
-		dd->end();
 	}
+	dd->end();
 
 	dd->depthMask(true);
 }
@@ -223,23 +224,24 @@ void NavMeshNonpointTesterTool::handleMenu()
 				float vertCount = poly->vertCount;
 
 				imguiSlider("Debug Vertex Index", &m_debugVertexIdx, 0.0f, vertCount - 1.0f, 1.0f);
-				m_debugVertexIdx = dtClamp(m_debugVertexIdx, 0.0f, vertCount);
-
 				float edgeCount = DT_VERTS_PER_POLYGON + (vertCount - 3) * 2;
-				imguiSlider("Debug Edge Index", &m_debugEdgeIdx, 0.0f, vertCount - 1.0f, 1.0f);
-
-				if (m_debugEdgeIdx < DT_VERTS_PER_POLYGON)
-				{
-					m_debugEdgeIdx = dtClamp(m_debugEdgeIdx, 0.0f, vertCount - 1.0f);
-				}
-				else
-				{
-					m_debugEdgeIdx = dtClamp(m_debugEdgeIdx, (float)DT_VERTS_PER_POLYGON, edgeCount - 1.0f);
-				}
+				imguiSlider("Debug Edge Index", &m_debugEdgeIdx, 0.0f, edgeCount - 1.0f, 1.0f);
 
 				float faceCount = vertCount - 2;
 				imguiSlider("Debug Face Index", &m_debugFaceIdx, 0.0f, faceCount - 1.0f, 1.0f);
-				m_debugFaceIdx = dtClamp(m_debugFaceIdx, 0.0f, faceCount);
+
+				clampValues();
+
+				{
+					dtInternalVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
+					dtInternalVertex verts[3];
+					iterations::fromFaceToVertices iterFaceVerts(face);
+					auto num = iterFaceVerts.allVertices(verts, 3);
+					dtAssert(num == 3);
+					char buff[1024];
+					sprintf_s(buff, 1024, "face verts:[%d, %d, %d]", verts[0].innerIdx, verts[1].innerIdx, verts[2].innerIdx);
+					imguiValue(buff);
+				}
 			}
 		}
 	}
@@ -362,6 +364,8 @@ void NavMeshNonpointTesterTool::handleRender()
 	{
 		if (m_debugPolyRef)
 		{
+			clampValues();
+
 			duDebugDrawNavMeshPoly(&dd, *m_navMesh, m_debugPolyRef, faceCol);
 
 			dtInternalVertex vertex(m_navMesh, m_debugPolyRef, (int)m_debugVertexIdx);
@@ -419,4 +423,39 @@ void NavMeshNonpointTesterTool::drawAgent(const float* pos, float r, float h, fl
 	dd.end();
 
 	dd.depthMask(true);
+}
+
+void NavMeshNonpointTesterTool::clampValues()
+{
+	if (!m_navMesh)
+		return;
+
+	if (m_toolMode == TOOLMODE_DEBUG_DRAW_PRIMITIVES)
+	{
+		if (m_navMesh && m_debugPolyRef)
+		{
+			const dtMeshTile* tile = 0;
+			const dtPoly* poly = 0;
+			if (dtStatusSucceed(m_navMesh->getTileAndPolyByRef(m_debugPolyRef, &tile, &poly)))
+			{
+				float vertCount = poly->vertCount;
+
+				m_debugVertexIdx = dtClamp(m_debugVertexIdx, 0.0f, vertCount);
+
+				float edgeCount = DT_VERTS_PER_POLYGON + (vertCount - 3) * 2;
+
+				if (m_debugEdgeIdx < DT_VERTS_PER_POLYGON)
+				{
+					m_debugEdgeIdx = dtClamp(m_debugEdgeIdx, 0.0f, vertCount - 1.0f);
+				}
+				else
+				{
+					m_debugEdgeIdx = dtClamp(m_debugEdgeIdx, (float)DT_VERTS_PER_POLYGON, edgeCount - 1.0f);
+				}
+
+				float faceCount = vertCount - 2;
+				m_debugFaceIdx = dtClamp(m_debugFaceIdx, 0.0f, faceCount);
+			}
+		}
+	}
 }
