@@ -35,9 +35,20 @@ struct dtInternalPrimitive
 		return *this;
 	}
 
+	explicit operator bool() const {
+		return isValid();
+	}
+
 	bool isValid() const
 	{
 		return navmesh != nullptr && polyId != 0 && innerIdx != -1;
+	}
+
+	void reset()
+	{
+		navmesh = nullptr;
+		polyId = 0;
+		innerIdx = -1;
 	}
 
 	bool getTileAndPoly(const dtMeshTile** tile, const dtPoly** poly) const
@@ -512,5 +523,9 @@ namespace iterations
 namespace astar
 {
 	
+}
+
+namespace debug
+{
 }
 #endif // DETOURNAVMESHQUERY_NONPOINT_H
