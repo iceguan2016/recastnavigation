@@ -3,6 +3,7 @@
 #define DETOURNAVMESHQUERY_NONPOINT_H
 
 #include "DetourAssert.h"
+#include "DetourCommon.h"
 #include "DetourNavMesh.h"
 
 // 处理带有半径的单位寻路
@@ -58,7 +59,7 @@ struct dtInternalPrimitive
 			innerIdx == inOther.innerIdx;
 	}
 
-	const dtNavMesh* navmesh;
+	const dtNavMesh*	navmesh;
 	dtPolyRef			polyId;
 	int					innerIdx;
 };
@@ -101,6 +102,21 @@ namespace queriers
 				 \|____\/      面的边：[0]: 0-1-6, [1]: 7-2-8, [2]：9-3-10, [3]: 10-4-5
 				 4       3
 	*/
+
+	// Vertex
+	inline static bool vertexPosition(const dtInternalVertex& vertex, float* pos) 
+	{
+		const dtMeshTile* tile = 0;
+		const dtPoly* poly = 0;
+		if (vertex.getTileAndPoly(&tile, &poly))
+		{
+			dtAssert(vertex.innerIdx < poly->vertCount);
+			auto v = &tile->verts[poly->verts[vertex.innerIdx]];
+			dtVcopy(pos, v);
+			return true;
+		}
+		return false;
+	}
 
 	// Edge
 	inline static dtInternalVertex edgeOriginVertex(const dtInternalEdge& edge)
@@ -174,6 +190,7 @@ namespace queriers
 				return (idx & 0x1) == 0 ? dtInternalFace(edge.navmesh, edge.polyId, idx / 2) : dtInternalFace(edge.navmesh, edge.polyId, idx / 2 + 1);
 			}
 		}
+		return dtInternalFace::INVALID;
 	}
 
 	inline static int sharedEdgeIndex(const dtNavMesh* nav, const dtPolyRef from, const dtPolyRef to)
@@ -431,6 +448,24 @@ namespace iterations
 				_resultVertex = dtInternalVertex::INVALID;
 			}
 			return _resultVertex;
+		}
+
+		int allVertices(dtInternalVertex *outVerts, int maxVertNum)
+		{
+			int vi = 0;
+			do 
+			{
+				if (vi >= maxVertNum)
+					break;
+
+				auto v = next();
+				if (!v.isValid()) 
+					break;
+
+				outVerts[vi] = v;
+				++vi;
+			} while (true);
+			return vi;
 		}
 
 		dtInternalFace _fromFace;
