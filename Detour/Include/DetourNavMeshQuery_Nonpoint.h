@@ -545,6 +545,44 @@ namespace iterations
 		dtInternalEdge _nextEdge;
 		dtInternalFace _resultFace;
 	};
+
+	struct fromPolyToInternalFaces
+	{
+		fromPolyToInternalFaces(const dtNavMesh* nav, const dtPolyRef& ref)
+			: _nav(nav), _ref(ref), _poly(0), _faceIdx(0), _resultFace()
+		{
+			if (_nav && _ref)
+			{
+				const dtMeshTile* tile = 0;
+				const dtPoly* poly = 0;
+				if (dtStatusSucceed(_nav->getTileAndPolyByRef(_ref, &tile, &poly)))
+				{
+					_poly = poly;
+					_faceIdx = 0;
+				}
+			}
+		}
+
+		dtInternalFace next()
+		{
+			if (_poly && _faceIdx < _poly->vertCount)
+			{
+				_resultFace = dtInternalFace(_nav, _ref, _faceIdx);
+				++_faceIdx;
+			}
+			else
+			{
+				_resultFace.reset();
+			}
+			return _resultFace;
+		}
+
+		const dtNavMesh*	_nav;
+		dtPolyRef			_ref;
+		const dtPoly*		_poly;	
+		int					_faceIdx;
+		dtInternalFace		_resultFace;
+	};
 }
 
 namespace astar
