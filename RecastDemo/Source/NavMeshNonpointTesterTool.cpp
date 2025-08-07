@@ -36,6 +36,7 @@ static float frand()
 
 // debug draw
 static float debugYOffset = 0.0f;
+static bool  debugDrawNeiFaces = false;
 
 void duDebugDrawInternalVertex(duDebugDraw* dd, const dtInternalVertex& vertex, unsigned int col, const float size/* = 3.0f*/)
 {
@@ -229,6 +230,10 @@ void NavMeshNonpointTesterTool::handleMenu()
 
 				float faceCount = vertCount - 2;
 				imguiSlider("Debug Face Index", &m_debugFaceIdx, 0.0f, faceCount - 1.0f, 1.0f);
+				if (imguiCheck("Debug Draw NeiFaces", debugDrawNeiFaces))
+				{
+					debugDrawNeiFaces = !debugDrawNeiFaces;
+				}
 
 				clampValues();
 
@@ -345,6 +350,7 @@ void NavMeshNonpointTesterTool::handleRender()
 	static const unsigned int endCol = duRGBA(51, 102, 0, 129);
 	static const unsigned int pathCol = duRGBA(0, 0, 0, 64);
 	static const unsigned int faceCol = duRGBA(128, 128, 0, 64);
+	static const unsigned int neiFaceCol = duRGBA(0, 128, 128, 64);
 
 	const float agentRadius = m_sample->getAgentRadius();
 	const float agentHeight = m_sample->getAgentHeight();
@@ -381,7 +387,7 @@ void NavMeshNonpointTesterTool::handleRender()
 		{
 			clampValues();
 
-			duDebugDrawNavMeshPoly(&dd, *m_navMesh, m_debugPolyRef, faceCol);
+			//duDebugDrawNavMeshPoly(&dd, *m_navMesh, m_debugPolyRef, faceCol);
 
 			dtInternalVertex vertex(m_navMesh, m_debugPolyRef, (int)m_debugVertexIdx);
 			duDebugDrawInternalVertex(&dd, vertex, startCol, 10.0f);
@@ -391,6 +397,17 @@ void NavMeshNonpointTesterTool::handleRender()
 
 			dtInternalVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
 			duDebugDrawInternalFace(&dd, face, endCol);
+
+			if (debugDrawNeiFaces)
+			{
+				dtInternalFace faces[3];
+				iterations::fromFaceToNeighborFace iterNeiFaces(face);
+				auto num_faces = iterNeiFaces.allFaces(faces, 3);
+				for (int i = 0; i < num_faces; ++i)
+				{
+					duDebugDrawInternalFace(&dd, faces[i], neiFaceCol);
+				}
+			}
 		}
 	}
 }
