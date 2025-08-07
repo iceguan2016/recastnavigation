@@ -2,14 +2,19 @@
 #ifndef DETOURNAVMESHQUERY_NONPOINT_H
 #define DETOURNAVMESHQUERY_NONPOINT_H
 
-#include "DetourNavMeshQuery.h"
 #include "DetourAssert.h"
+#include "DetourNavMesh.h"
 
 // 处理带有半径的单位寻路
 
 struct dtInternalPrimitive
 {
 	static dtInternalPrimitive INVALID;
+
+	dtInternalPrimitive()
+		: navmesh(nullptr), polyId(0), innerIdx(-1)
+	{
+	}
 
 	dtInternalPrimitive(const dtNavMesh* inNavmesh, const dtPolyRef& inPolyId, const int& inInnerIdx)
 		: navmesh(inNavmesh), polyId(inPolyId), innerIdx(inInnerIdx)
@@ -58,14 +63,12 @@ struct dtInternalPrimitive
 	int					innerIdx;
 };
 
-dtInternalPrimitive dtInternalPrimitive::INVALID(nullptr, 0, -1);
-
 typedef dtInternalPrimitive dtInternalVertex;
 typedef dtInternalPrimitive dtInternalEdge;
 typedef dtInternalPrimitive dtInternalFace;
 
 
-struct dtPolygonTraits
+namespace queriers
 {
 	/*
 		内部边成对增加，表示正向和反向
@@ -99,6 +102,7 @@ struct dtPolygonTraits
 				 4       3
 	*/
 
+	// Edge
 	inline static dtInternalVertex edgeOriginVertex(const dtInternalEdge& edge)
 	{
 		const dtMeshTile* tile = 0;
@@ -139,6 +143,37 @@ struct dtPolygonTraits
 			}
 		}
 		return dtInternalVertex::INVALID;
+	}
+
+	inline static dtInternalFace edgeLeftFace(const dtInternalEdge& edge)
+	{
+		const dtMeshTile* tile = 0;
+		const dtPoly* poly = 0;
+		if (edge.getTileAndPoly(&tile, &poly))
+		{
+			if (edge.innerIdx < DT_VERTS_PER_POLYGON)
+			{
+				// 原始边
+				if (edge.innerIdx < 2)
+				{
+					return dtInternalFace(edge.navmesh, edge.polyId, 0);
+				}
+				else if (edge.innerIdx > poly->vertCount - 3)
+				{
+					return dtInternalFace(edge.navmesh, edge.polyId, poly->vertCount - 3);
+				}
+				else
+				{
+					return dtInternalFace(edge.navmesh, edge.polyId, edge.innerIdx - 1);
+				}
+			}
+			else
+			{
+				// 新增内部边
+				auto idx = edge.innerIdx - DT_VERTS_PER_POLYGON;
+				return (idx & 0x1) == 0 ? dtInternalFace(edge.navmesh, edge.polyId, idx / 2) : dtInternalFace(edge.navmesh, edge.polyId, idx / 2 + 1);
+			}
+		}
 	}
 
 	inline static int sharedEdgeIndex(const dtNavMesh* nav, const dtPolyRef from, const dtPolyRef to)
@@ -289,37 +324,6 @@ struct dtPolygonTraits
 		return dtInternalEdge::INVALID;
 	}
 
-	inline static dtInternalFace edgeLeftFace(const dtInternalEdge& edge)
-	{
-		const dtMeshTile* tile = 0;
-		const dtPoly* poly = 0;
-		if (edge.getTileAndPoly(&tile, &poly))
-		{
-			if (edge.innerIdx < DT_VERTS_PER_POLYGON)
-			{
-				// 原始边
-				if (edge.innerIdx < 2)
-				{
-					return dtInternalFace(edge.navmesh, edge.polyId, 0);
-				}
-				else if (edge.innerIdx > poly->vertCount - 3)
-				{
-					return dtInternalFace(edge.navmesh, edge.polyId, poly->vertCount - 3);
-				}
-				else
-				{
-					return dtInternalFace(edge.navmesh, edge.polyId, edge.innerIdx - 1);
-				}
-			}
-			else
-			{
-				// 新增内部边
-				auto idx = edge.innerIdx - DT_VERTS_PER_POLYGON;
-				return (idx & 0x1) == 0 ? dtInternalFace(edge.navmesh, edge.polyId, idx / 2) : dtInternalFace(edge.navmesh, edge.polyId, idx / 2 + 1);
-			}
-		}
-	}
-
 	inline static dtInternalFace edgeRightFace(const dtInternalEdge& edge)
 	{
 		do
@@ -331,6 +335,7 @@ struct dtPolygonTraits
 		return dtInternalFace::INVALID;
 	}
 
+	// Face
 	inline static dtInternalEdge faceEdge(const dtInternalFace& face)
 	{
 		const dtMeshTile* tile = 0;
@@ -364,4 +369,108 @@ struct dtPolygonTraits
 		return dtInternalEdge::INVALID;
 	}
 };
+
+namespace iterations
+{
+	struct fromFaceToInnerEdges
+	{
+		fromFaceToInnerEdges(const dtInternalFace& fromFace)
+			: _fromFace(fromFace)
+		{
+			_fromFaceEdge = queriers::faceEdge(fromFace);
+			_nextEdge = _fromFaceEdge;
+		}
+
+		dtInternalEdge next()
+		{
+			if (_nextEdge.isValid())
+			{
+				_resultEdge = _nextEdge;
+				_nextEdge = queriers::edgeNextLeftEdge(_nextEdge);
+				if (_nextEdge == _fromFaceEdge)
+				{
+					_nextEdge = dtInternalEdge::INVALID;
+				}
+			}
+			else 
+			{
+				_resultEdge = dtInternalEdge::INVALID;
+			}
+
+			return _resultEdge;
+		}
+
+		dtInternalFace _fromFace;
+		dtInternalEdge _fromFaceEdge;
+		dtInternalEdge _nextEdge;
+		dtInternalFace _resultEdge;
+	};
+
+	struct fromFaceToVertices
+	{
+		fromFaceToVertices(const dtInternalFace& fromFace)
+			: _fromFace(fromFace)
+		{
+			_fromFaceEdge = queriers::faceEdge(fromFace);
+			_nextEdge = _fromFaceEdge;
+		}
+
+		dtInternalVertex next()
+		{
+			if (_nextEdge.isValid())
+			{
+				_resultVertex = queriers::edgeOriginVertex(_nextEdge);
+				_nextEdge = queriers::edgeNextLeftEdge(_nextEdge);
+				if (_nextEdge == _fromFaceEdge)
+				{
+					_nextEdge = dtInternalEdge::INVALID;
+				}
+			}
+			else 
+			{
+				_resultVertex = dtInternalVertex::INVALID;
+			}
+			return _resultVertex;
+		}
+
+		dtInternalFace _fromFace;
+		dtInternalEdge _fromFaceEdge;
+		dtInternalEdge _nextEdge;
+		dtInternalVertex _resultVertex;
+	};
+
+	struct fromFaceToNeighborFace
+	{
+		fromFaceToNeighborFace(const dtInternalFace& fromFace)
+			: _fromFace(fromFace)
+		{
+			_fromFaceEdge = queriers::faceEdge(fromFace);
+			_nextEdge = _fromFaceEdge;
+		}
+
+		dtInternalFace next()
+		{
+			if (_nextEdge.isValid()) 
+			{
+				_resultFace = queriers::edgeRightFace(_nextEdge);
+				_nextEdge = queriers::edgeNextLeftEdge(_nextEdge);
+				if (_nextEdge == _fromFaceEdge)
+				{
+					_nextEdge = dtInternalEdge::INVALID;
+				}
+			}
+			else
+			{
+				_resultFace = dtInternalFace::INVALID;
+			}
+
+			return _resultFace;
+		}
+
+		dtInternalFace _fromFace;
+		dtInternalEdge _fromFaceEdge;
+		dtInternalEdge _nextEdge;
+		dtInternalFace _resultFace;
+	};
+}
 #endif // DETOURNAVMESHQUERY_NONPOINT_H

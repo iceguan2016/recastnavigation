@@ -21,6 +21,7 @@
 
 #include "DetourNavMesh.h"
 #include "DetourStatus.h"
+#include "DetourNavMeshQuery_Nonpoint.h"
 
 
 // Define DT_VIRTUAL_QUERYFILTER if you wish to derive a custom filter from dtQueryFilter.
@@ -518,6 +519,11 @@ public:
 	/// Gets the navigation mesh the query object is using.
 	/// @return The navigation mesh the query object is using.
 	const dtNavMesh* getAttachedNavMesh() const { return m_nav; }
+
+	/// Non-point
+	dtStatus findNearestFace(const float* center, const float* halfExtents,
+		const dtQueryFilter* filter,
+		dtInternalFace* nearestFace, float* nearestPt) const;
 
 	/// @}
 	
