@@ -7,17 +7,19 @@
 #include "DetourNavMesh.h"
 
 // 处理带有半径的单位寻路
+typedef unsigned short dtPrimIndex;
+static const dtPrimIndex DT_INVALID_PRIM_INDEX = ~0;
 
 struct dtInternalPrimitive
 {
 	static dtInternalPrimitive INVALID;
 
 	dtInternalPrimitive()
-		: navmesh(nullptr), polyId(0), innerIdx(-1)
+		: navmesh(nullptr), polyId(0), innerIdx(DT_INVALID_PRIM_INDEX)
 	{
 	}
 
-	dtInternalPrimitive(const dtNavMesh* inNavmesh, const dtPolyRef& inPolyId, const int& inInnerIdx)
+	dtInternalPrimitive(const dtNavMesh* inNavmesh, const dtPolyRef& inPolyId, const dtPrimIndex& inInnerIdx)
 		: navmesh(inNavmesh), polyId(inPolyId), innerIdx(inInnerIdx)
 	{
 	}
@@ -41,7 +43,7 @@ struct dtInternalPrimitive
 
 	bool isValid() const
 	{
-		return navmesh != nullptr && polyId != 0 && innerIdx != -1;
+		return navmesh != nullptr && polyId != 0 && innerIdx != DT_INVALID_PRIM_INDEX;
 	}
 
 	void reset()
@@ -79,7 +81,7 @@ struct dtInternalPrimitive
 
 	const dtNavMesh*	navmesh;
 	dtPolyRef			polyId;
-	int					innerIdx;
+	dtPrimIndex		innerIdx;
 };
 
 typedef dtInternalPrimitive dtInternalVertex;
@@ -277,7 +279,7 @@ namespace queriers
 			if (edge.innerIdx < DT_VERTS_PER_POLYGON)
 			{
 				// 原始边
-				unsigned char edgeIdx = edge.innerIdx;
+				unsigned short edgeIdx = (unsigned short)edge.innerIdx;
 				unsigned short nei = poly->neis[edgeIdx];
 
 				if (nei & DT_EXT_LINK)
@@ -419,7 +421,7 @@ namespace queriers
 			if (edge.innerIdx < DT_VERTS_PER_POLYGON)
 			{
 				// 原始边
-				unsigned char edgeIdx = edge.innerIdx;
+				unsigned short edgeIdx = (unsigned short)edge.innerIdx;
 				unsigned short nei = poly->neis[edgeIdx];
 				return nei == 0;
 			}

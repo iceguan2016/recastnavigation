@@ -45,6 +45,14 @@ dtStatus dtNavMeshQuery::findNearestFace(const float* center, const float* halfE
 	return DT_FAILURE;
 }
 
+dtStatus dtNavMeshQuery::findPath(const dtInternalFace& startRef, const dtInternalFace& endRef,
+	const float* startPos, const float* endPos,
+	const dtQueryFilter* filter,
+	dtInternalFace* path, int* pathCount, const int maxPath) const
+{
+	return DT_FAILURE;
+}
+
 namespace astar
 {
 	struct dtInternalPrimitiveHash

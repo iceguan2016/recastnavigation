@@ -20,6 +20,7 @@
 #define DETOURNODE_H
 
 #include "DetourNavMesh.h"
+#include "DetourNavMeshQuery_Nonpoint.h"
 
 enum dtNodeFlags
 {
@@ -42,6 +43,9 @@ struct dtNode
 	unsigned int state : DT_NODE_STATE_BITS;	///< extra state information. A polyRef can have multiple nodes with different extra info. see DT_MAX_STATES_PER_NODE
 	unsigned int flags : 3;						///< Node flags. A combination of dtNodeFlags.
 	dtPolyRef id;								///< Polygon ref the node corresponds to.
+
+	//
+	dtPrimIndex primIdx;						///< Triangle-based Pathfinding Index
 };
 
 static const int DT_MAX_STATES_PER_NODE = 1 << DT_NODE_STATE_BITS;	// number of extra states per node. See dtNode::state
@@ -55,9 +59,9 @@ public:
 
 	// Get a dtNode by ref and extra state information. If there is none then - allocate
 	// There can be more than one node for the same polyRef but with different extra state information
-	dtNode* getNode(dtPolyRef id, unsigned char state=0);	
-	dtNode* findNode(dtPolyRef id, unsigned char state);
-	unsigned int findNodes(dtPolyRef id, dtNode** nodes, const int maxNodes);
+	dtNode* getNode(dtPolyRef id, unsigned char state=0, dtPrimIndex primIdx=DT_INVALID_PRIM_INDEX);
+	dtNode* findNode(dtPolyRef id, unsigned char state, dtPrimIndex primIdx=DT_INVALID_PRIM_INDEX);
+	unsigned int findNodes(dtPolyRef id, dtNode** nodes, const int maxNodes, dtPrimIndex primIdx=DT_INVALID_PRIM_INDEX);
 
 	inline unsigned int getNodeIdx(const dtNode* node) const
 	{

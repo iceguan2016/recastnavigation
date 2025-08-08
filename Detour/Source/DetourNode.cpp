@@ -86,14 +86,14 @@ void dtNodePool::clear()
 	m_nodeCount = 0;
 }
 
-unsigned int dtNodePool::findNodes(dtPolyRef id, dtNode** nodes, const int maxNodes)
+unsigned int dtNodePool::findNodes(dtPolyRef id, dtNode** nodes, const int maxNodes, dtPrimIndex primIdx/*=DT_INVALID_PRIM_INDEX*/)
 {
 	int n = 0;
 	unsigned int bucket = dtHashRef(id) & (m_hashSize-1);
 	dtNodeIndex i = m_first[bucket];
 	while (i != DT_NULL_IDX)
 	{
-		if (m_nodes[i].id == id)
+		if (m_nodes[i].id == id && m_nodes[i].primIdx == primIdx)
 		{
 			if (n >= maxNodes)
 				return n;
@@ -105,20 +105,20 @@ unsigned int dtNodePool::findNodes(dtPolyRef id, dtNode** nodes, const int maxNo
 	return n;
 }
 
-dtNode* dtNodePool::findNode(dtPolyRef id, unsigned char state)
+dtNode* dtNodePool::findNode(dtPolyRef id, unsigned char state, dtPrimIndex primIdx/*=DT_INVALID_PRIM_INDEX*/)
 {
 	unsigned int bucket = dtHashRef(id) & (m_hashSize-1);
 	dtNodeIndex i = m_first[bucket];
 	while (i != DT_NULL_IDX)
 	{
-		if (m_nodes[i].id == id && m_nodes[i].state == state)
+		if (m_nodes[i].id == id && m_nodes[i].state == state && m_nodes[i].primIdx == primIdx)
 			return &m_nodes[i];
 		i = m_next[i];
 	}
 	return 0;
 }
 
-dtNode* dtNodePool::getNode(dtPolyRef id, unsigned char state)
+dtNode* dtNodePool::getNode(dtPolyRef id, unsigned char state, dtPrimIndex primIdx/*=DT_INVALID_PRIM_INDEX*/)
 {
 	unsigned int bucket = dtHashRef(id) & (m_hashSize-1);
 	dtNodeIndex i = m_first[bucket];
@@ -144,6 +144,7 @@ dtNode* dtNodePool::getNode(dtPolyRef id, unsigned char state)
 	node->id = id;
 	node->state = state;
 	node->flags = 0;
+	node->primIdx = primIdx;
 	
 	m_next[i] = m_first[bucket];
 	m_first[bucket] = i;

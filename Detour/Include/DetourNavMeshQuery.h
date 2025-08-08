@@ -524,7 +524,11 @@ public:
 	dtStatus findNearestFace(const float* center, const float* halfExtents,
 		const dtQueryFilter* filter,
 		dtInternalFace* nearestFace, float* nearestPt) const;
-
+	
+	dtStatus findPath(const dtInternalFace& startRef, const dtInternalFace& endRef,
+		const float* startPos, const float* endPos,
+		const dtQueryFilter* filter,
+		dtInternalFace* path, int* pathCount, const int maxPath) const;
 	/// @}
 	
 private:
