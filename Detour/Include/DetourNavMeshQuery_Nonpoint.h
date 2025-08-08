@@ -63,11 +63,18 @@ struct dtInternalPrimitive
 		return false;
 	}
 
-	bool operator==(const dtInternalPrimitive& inOther)
+	bool operator==(const dtInternalPrimitive& inOther) const
 	{
 		return navmesh == inOther.navmesh &&
 			polyId == inOther.polyId &&
 			innerIdx == inOther.innerIdx;
+	}
+
+	bool operator!=(const dtInternalPrimitive& inOther) const
+	{
+		return navmesh != inOther.navmesh ||
+			polyId != inOther.polyId ||
+			innerIdx != inOther.innerIdx;
 	}
 
 	const dtNavMesh*	navmesh;
@@ -171,6 +178,45 @@ namespace queriers
 			}
 		}
 		return dtInternalVertex::INVALID;
+	}
+
+	inline static bool edgeOriginAndDestinationVertex(const dtInternalEdge& edge, dtInternalVertex* origin, dtInternalVertex* destination)
+	{
+		const dtMeshTile* tile = 0;
+		const dtPoly* poly = 0;
+		if (edge.getTileAndPoly(&tile, &poly))
+		{
+			if (edge.innerIdx < DT_VERTS_PER_POLYGON)
+			{
+				// 原始边
+				if (origin)
+					*origin = dtInternalVertex(edge.navmesh, edge.polyId, edge.innerIdx);
+				if (destination)
+					*destination = dtInternalVertex(edge.navmesh, edge.polyId, (edge.innerIdx + 1) % poly->vertCount);
+				return true;
+			}
+			else
+			{
+				// 新增内部边(起点)
+				auto idx = edge.innerIdx - DT_VERTS_PER_POLYGON;
+				if ((idx & 0x1) == 1)
+				{
+					if (origin)
+						*origin = dtInternalVertex(edge.navmesh, edge.polyId, 0);
+					if (destination)
+						*destination = dtInternalVertex(edge.navmesh, edge.polyId, idx / 2 + 2);
+				} 
+				else
+				{
+					if (origin)
+						*origin = dtInternalVertex(edge.navmesh, edge.polyId, idx / 2 + 2);
+					if (destination)
+						*destination = dtInternalVertex(edge.navmesh, edge.polyId, 0);
+				}
+				return true;
+			}
+		}
+		return false;
 	}
 
 	inline static dtInternalFace edgeLeftFace(const dtInternalEdge& edge)
@@ -364,6 +410,28 @@ namespace queriers
 		return dtInternalFace::INVALID;
 	}
 
+	inline static bool edgeIsBoundary(const dtInternalEdge& edge)
+	{
+		const dtMeshTile* tile = 0;
+		const dtPoly* poly = 0;
+		if (edge.getTileAndPoly(&tile, &poly))
+		{
+			if (edge.innerIdx < DT_VERTS_PER_POLYGON)
+			{
+				// 原始边
+				unsigned char edgeIdx = edge.innerIdx;
+				unsigned short nei = poly->neis[edgeIdx];
+				return nei == 0;
+			}
+			else
+			{
+				// 新增内部边(起点)
+				return false;
+			}
+		}
+		return false;
+	}
+
 	// Face
 	inline static dtInternalEdge faceEdge(const dtInternalFace& face)
 	{
@@ -396,6 +464,46 @@ namespace queriers
 			return dtInternalEdge(face.navmesh, face.polyId, edgeIndex);
 		}
 		return dtInternalEdge::INVALID;
+	}
+
+	inline static void faceAllEdges(const dtInternalFace& face, dtInternalEdge outEdges[3])
+	{
+		const dtMeshTile* tile = 0;
+		const dtPoly* poly = 0;
+		if (face.getTileAndPoly(&tile, &poly))
+		{
+			int edges[3];
+			if (poly->vertCount == 3)
+			{
+				edges[0] = 0; edges[1] = 1; edges[2] = 2;
+			}
+			else
+			{
+				auto i = face.innerIdx;
+				// N = poly->vertCount, 表示总边数
+				// i == 0				=> [0, 1, 6]
+				// i > 0 && i < N-3		=> [7 + (i-1)*2, i+1, 8 + (i-1)*2]
+				// i == N-3				=> [7 + (i-1)*2, i+1, i+2]
+
+				if (i == 0)
+				{
+					edges[0] = 0; edges[1] = 1; edges[2] = 6;
+				}
+				else if (i == poly->vertCount - 3)
+				{
+					edges[0] = 7 + (i - 1) * 2; edges[1] = i + 1; edges[2] = i + 2;
+				}
+				else
+				{
+					edges[0] = 7 + (i - 1) * 2; edges[1] = i + 1; edges[2] = 8 + (i - 1) * 2;
+				}
+			}
+
+			for (int k = 0; k < 3; ++k)
+			{
+				outEdges[k] = dtInternalEdge(face.navmesh, face.polyId, edges[(k + 1) % 3]);
+			}
+		}
 	}
 };
 
@@ -585,9 +693,84 @@ namespace iterations
 	};
 }
 
+namespace geom
+{
+	inline static bool projectPointOnEdge(const float* p, const dtInternalEdge& edge, float* proj)
+	{
+		dtInternalVertex v0, v1;
+		if (queriers::edgeOriginAndDestinationVertex(edge, &v0, &v1))
+		{
+			float p0[3], p1[3];
+			queriers::vertexPosition(v0, p0);
+			queriers::vertexPosition(v1, p1);
+
+			float p0p[3], n_p0p1[3];
+			dtVsub(p0p, p, p0);
+			dtVsub(n_p0p1, p1, p0);
+			dtVnormalize(n_p0p1);
+			float d = dtVdot(p0p, n_p0p1);
+			dtVmad(proj, p0, n_p0p1, d);
+			return true;
+		}
+		return false;
+	}
+
+	inline static float distanceSquaredPointToEdge(const float* p, const dtInternalEdge& edge)
+	{
+		dtInternalVertex v0, v1;
+		if (queriers::edgeOriginAndDestinationVertex(edge, &v0, &v1))
+		{
+			float a[3], b[3];
+			queriers::vertexPosition(v0, a);
+			queriers::vertexPosition(v1, b);
+
+			float ab[3], ap[3];
+			dtVsub(ab, b, a);
+			float abSqr = dtVlenSqr(ab);
+			if (dtAbs(abSqr) < 0.01f)
+			{
+				return 0.0f;
+			}
+			else
+			{
+				dtVsub(ap, p, a);
+				float d = dtVdot(ap, ab) / abSqr;
+				if (d < 0.0f)
+				{
+					return dtVlenSqr(ap);
+				}
+				else if (d <= 1.0f)
+				{
+					auto paSqr = dtVlenSqr(ap);
+					return paSqr - d * d * abSqr;
+				}
+				else
+				{
+					float bp[3];
+					dtVsub(bp, p, a);
+					return dtVlenSqr(bp);
+				}
+			}
+		}
+
+		return 0.0f;
+	}
+
+	inline static float distanceSquaredVertexToEdge(const dtInternalVertex& vertex, const dtInternalEdge& edge)
+	{
+		float p[3];
+		if (queriers::vertexPosition(vertex, p))
+		{
+			return distanceSquaredPointToEdge(p, edge);
+		}
+		return 0.0f;
+	}
+}
+
 namespace astar
 {
-	
+	// 检查通过throughFace从fromEdge到toEdge，半径为radius的单位是否能够通过
+	bool isWalkableByRedius(float radius, const dtInternalEdge& fromEdge, const dtInternalFace& throughFace, const dtInternalEdge& toEdge);
 }
 
 namespace debug
