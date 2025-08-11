@@ -6,6 +6,8 @@
 #include "DetourCommon.h"
 #include "DetourNavMesh.h"
 
+#define DT_DEBUG_ASTAR 1
+
 // 处理带有半径的单位寻路
 typedef unsigned short dtPrimIndex;
 static const dtPrimIndex DT_INVALID_PRIM_INDEX = ~0;
@@ -812,6 +814,12 @@ namespace geom
 
 namespace astar
 {
+	struct dtAstarNodeDebug
+	{
+		dtPolyFace	face;
+		float		entry_pos[3];
+	};
+
 	// 检查通过throughFace从fromEdge到toEdge，半径为radius的单位是否能够通过
 	bool isWalkableByRadius(float radius, const dtPolyEdge& fromEdge, const dtPolyFace& throughFace, const dtPolyEdge& toEdge);
 }

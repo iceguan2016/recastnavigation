@@ -37,8 +37,22 @@ static float frand()
 // debug draw
 static float debugYOffset = 0.0f;
 static bool  debugDrawNeiFaces = false;
+static float debugFindPathRadius = 0.5f;
+static float debugFindPathIters = 100;
 
-void duDebugDrawInternalVertex(duDebugDraw* dd, const dtPolyVertex& vertex, unsigned int col, const float size/* = 3.0f*/)
+void duDebugDrawPoint(duDebugDraw* dd, const float p[3], unsigned int col, const float size /*= 3.0f*/)
+{
+	if (dd == nullptr) return;
+
+	dd->begin(DU_DRAW_POINTS, size);
+	float v[3];
+	dtVcopy(v, p);
+	v[1] += debugYOffset;
+	dd->vertex(v, col);
+	dd->end();
+}
+
+void duDebugDrawPolyVertex(duDebugDraw* dd, const dtPolyVertex& vertex, unsigned int col, const float size/* = 3.0f*/)
 {
 	if (dd == nullptr) return;
 	if (!vertex.isValid()) return;
@@ -52,7 +66,7 @@ void duDebugDrawInternalVertex(duDebugDraw* dd, const dtPolyVertex& vertex, unsi
 	dd->end();
 }
 
-void duDebugDrawInternalEdge(duDebugDraw* dd, const dtPolyEdge& edge, unsigned int col, const float lineWidth/* = 1.0f*/)
+void duDebugDrawPolyEdge(duDebugDraw* dd, const dtPolyEdge& edge, unsigned int col, const float lineWidth/* = 1.0f*/)
 {
 	if (dd == nullptr) return;
 	if (!edge.isValid()) return;
@@ -71,7 +85,7 @@ void duDebugDrawInternalEdge(duDebugDraw* dd, const dtPolyEdge& edge, unsigned i
 	duDebugDrawArrow(dd, v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], 0.0f, 0.4f, col, lineWidth);
 }
 
-void duDebugDrawInternalFace(duDebugDraw* dd, const dtPolyFace& face, unsigned int col)
+void duDebugDrawPolyFace(duDebugDraw* dd, const dtPolyFace& face, unsigned int col)
 {
 	if (dd == nullptr) return;
 	if (!face.isValid()) return;
@@ -110,7 +124,12 @@ NavMeshNonpointTesterTool::NavMeshNonpointTesterTool() :
 	m_debugPolyRef(0),
 	m_debugVertexIdx(0),
 	m_debugEdgeIdx(0),
-	m_debugFaceIdx(0)
+	m_debugFaceIdx(0),
+	m_nFaces(0)
+#if DT_DEBUG_ASTAR
+	,
+	m_nVisitedFaces(0)
+#endif
 {
 	m_filter.setIncludeFlags(SAMPLE_POLYFLAGS_ALL ^ SAMPLE_POLYFLAGS_DISABLED);
 	m_filter.setExcludeFlags(0);
@@ -265,6 +284,32 @@ void NavMeshNonpointTesterTool::handleMenu()
 			}
 		}
 	}
+	else if (m_toolMode == TOOLMODE_PATHFIND_FIND_PATH)
+	{
+		if (m_navMesh && m_navQuery &&
+			m_startRef.isValid() && m_endRef.isValid())
+		{
+			imguiSlider("Debug Find Path Radius", &debugFindPathRadius, 0.1f, 3.0f, 0.1f);
+			imguiSlider("Debug Find Path Iters", &debugFindPathIters, 0.0f, 100.0f, 1.0f);
+
+			if (imguiButton("Find path"))
+			{
+				m_navQuery->findPathByRadius(m_startRef, m_endRef, m_spos, m_epos, &m_filter, 
+					m_faces, &m_nFaces, MAX_POLYS,
+					debugFindPathRadius
+				#if DT_DEBUG_ASTAR
+					,
+					(int)debugFindPathIters,
+					m_visitedFaces, m_nVisitedFaces, MAX_VISIT_FACES
+				#endif	
+					);
+			}
+		}
+		else
+		{
+			imguiValue("invalid params!");
+		}
+	}
 }
 
 void NavMeshNonpointTesterTool::handleClick(const float* /*s*/, const float* p, bool shift)
@@ -368,17 +413,16 @@ void NavMeshNonpointTesterTool::handleRender()
 		return;
 	}
 
-	if (m_toolMode == TOOLMODE_PATHFIND_SET_GOAL ||
-		m_toolMode == TOOLMODE_PATHFIND_FIND_PATH)
+	if (m_toolMode == TOOLMODE_PATHFIND_SET_GOAL)
 	{
 		if (m_startRef.isValid())
 		{
-			duDebugDrawInternalFace(&dd, m_startRef, faceCol);
+			duDebugDrawPolyFace(&dd, m_startRef, faceCol);
 		}
 
 		if (m_endRef.isValid())
 		{
-			duDebugDrawInternalFace(&dd, m_endRef, faceCol);
+			duDebugDrawPolyFace(&dd, m_endRef, faceCol);
 		}
 	}
 	else if (m_toolMode == TOOLMODE_DEBUG_DRAW_PRIMITIVES)
@@ -390,13 +434,13 @@ void NavMeshNonpointTesterTool::handleRender()
 			//duDebugDrawNavMeshPoly(&dd, *m_navMesh, m_debugPolyRef, faceCol);
 
 			dtPolyVertex vertex(m_navMesh, m_debugPolyRef, (int)m_debugVertexIdx);
-			duDebugDrawInternalVertex(&dd, vertex, startCol, 10.0f);
+			duDebugDrawPolyVertex(&dd, vertex, startCol, 10.0f);
 
 			dtPolyVertex edge(m_navMesh, m_debugPolyRef, (int)m_debugEdgeIdx);
-			duDebugDrawInternalEdge(&dd, edge, startCol);
+			duDebugDrawPolyEdge(&dd, edge, startCol);
 
 			dtPolyVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
-			duDebugDrawInternalFace(&dd, face, endCol);
+			duDebugDrawPolyFace(&dd, face, endCol);
 
 			if (debugDrawNeiFaces)
 			{
@@ -405,10 +449,30 @@ void NavMeshNonpointTesterTool::handleRender()
 				auto num_faces = iterNeiFaces.allFaces(faces, 3);
 				for (int i = 0; i < num_faces; ++i)
 				{
-					duDebugDrawInternalFace(&dd, faces[i], neiFaceCol);
+					duDebugDrawPolyFace(&dd, faces[i], neiFaceCol);
 				}
 			}
 		}
+	}
+	else if (m_toolMode == TOOLMODE_PATHFIND_FIND_PATH)
+	{
+#if DT_DEBUG_ASTAR
+		static const unsigned int pointCol = duRGBA(255, 255, 0, 64);
+		static const unsigned int faceCols[3] = { 
+			duRGBA(255, 0, 0, 64),
+			duRGBA(0, 255, 0, 64), 
+			duRGBA(0, 0, 255, 64), 
+		};
+
+		if (m_nVisitedFaces > 0)
+		{
+			for (int i = 0; i < m_nVisitedFaces; ++i)
+			{
+				duDebugDrawPolyFace(&dd, m_visitedFaces[i].face, faceCols[i % 3]);
+				duDebugDrawPoint(&dd, m_visitedFaces[i].entry_pos, pointCol, 10.0f);
+			}
+		}
+#endif
 	}
 }
 

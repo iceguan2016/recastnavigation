@@ -529,7 +529,13 @@ public:
 		const float* startPos, const float* endPos,
 		const dtQueryFilter* filter,
 		dtPolyFace* path, int* pathCount, const int maxPath,
-		const float radius) const;
+		const float radius
+	#if DT_DEBUG_ASTAR
+		,
+		int maxIters,
+		astar::dtAstarNodeDebug* visitNodes, int& nVisitNodes, const int maxVisitNode
+	#endif
+		) const;
 
 	dtStatus dtNavMeshQuery::getPathToNode(struct dtNode* endNode, dtPolyFace* path, int* pathCount, int maxPath) const;
 	/// @}

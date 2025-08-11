@@ -5,9 +5,10 @@
 #include "DetourNavMesh.h"
 #include "DetourNavMeshQuery.h"
 
-void duDebugDrawInternalVertex(duDebugDraw* dd, const dtPolyVertex& vertex, unsigned int col, const float size=3.0f);
-void duDebugDrawInternalEdge(duDebugDraw* dd, const dtPolyEdge& edge, unsigned int col, const float lineWidth=1.0f);
-void duDebugDrawInternalFace(duDebugDraw* dd, const dtPolyFace& face, unsigned int col);
+void duDebugDrawPoint(duDebugDraw* dd, const float p[3], unsigned int col, const float size = 3.0f);
+void duDebugDrawPolyVertex(duDebugDraw* dd, const dtPolyVertex& vertex, unsigned int col, const float size=3.0f);
+void duDebugDrawPolyEdge(duDebugDraw* dd, const dtPolyEdge& edge, unsigned int col, const float lineWidth=1.0f);
+void duDebugDrawPolyFace(duDebugDraw* dd, const dtPolyFace& face, unsigned int col);
 
 class NavMeshNonpointTesterTool : public SampleTool
 {
@@ -32,6 +33,7 @@ class NavMeshNonpointTesterTool : public SampleTool
 
 	static const int MAX_POLYS = 256;
 	static const int MAX_SMOOTH = 2048;
+	static const int MAX_VISIT_FACES = 512;
 
 	dtPolyFace m_startRef;
 	dtPolyFace m_endRef;
@@ -51,6 +53,14 @@ class NavMeshNonpointTesterTool : public SampleTool
 	float		m_debugVertexIdx;
 	float		m_debugEdgeIdx;
 	float		m_debugFaceIdx;
+
+	dtPolyFace	m_faces[MAX_POLYS];
+	int			m_nFaces;
+
+#if DT_DEBUG_ASTAR
+	astar::dtAstarNodeDebug m_visitedFaces[MAX_VISIT_FACES];
+	int			m_nVisitedFaces;
+#endif
 
 public:
 	NavMeshNonpointTesterTool();

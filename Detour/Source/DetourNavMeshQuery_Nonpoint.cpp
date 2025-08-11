@@ -52,7 +52,13 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 	const float* startPos, const float* endPos,
 	const dtQueryFilter* filter,
 	dtPolyFace* path, int* pathCount, const int maxPath,
-	const float radius) const
+	const float radius
+#if DT_DEBUG_ASTAR
+	,
+	int maxIters,
+	astar::dtAstarNodeDebug* visitNodes, int& nVisitNodes, const int maxVisitNode
+#endif
+	) const
 {
 	if (dtAbs(radius) < 0.01f)
 	{
@@ -67,6 +73,11 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 		return DT_FAILURE | DT_INVALID_PARAM;
 
 	*pathCount = 0;
+
+#if DT_DEBUG_ASTAR
+	int iterTimes = 0;
+	nVisitNodes = 0;
+#endif
 
 	// Validate input
 	if (!startRef.isValid() || !endRef.isValid() ||
@@ -113,6 +124,23 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 
 		dtPolyFace bestFace(m_nav, bestNode->id, bestNode->primIdx);
 		auto entryEdge = bestNode->entryEdge;
+
+#if DT_DEBUG_ASTAR
+		if (iterTimes >= maxIters)
+		{
+			break;
+		}
+		++iterTimes;
+
+		if (visitNodes && nVisitNodes < maxVisitNode)
+		{
+			auto& visit = visitNodes[nVisitNodes];
+			visit.face = bestFace;
+			dtVcopy(visit.entry_pos, bestNode->pos);
+
+			++nVisitNodes;
+		}
+#endif
 
 		// Reached the goal, stop searching.
 		if (bestFace == endRef)
