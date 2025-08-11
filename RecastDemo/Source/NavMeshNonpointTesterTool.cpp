@@ -38,7 +38,7 @@ static float frand()
 static float debugYOffset = 0.0f;
 static bool  debugDrawNeiFaces = false;
 
-void duDebugDrawInternalVertex(duDebugDraw* dd, const dtInternalVertex& vertex, unsigned int col, const float size/* = 3.0f*/)
+void duDebugDrawInternalVertex(duDebugDraw* dd, const dtPolyVertex& vertex, unsigned int col, const float size/* = 3.0f*/)
 {
 	if (dd == nullptr) return;
 	if (!vertex.isValid()) return;
@@ -52,7 +52,7 @@ void duDebugDrawInternalVertex(duDebugDraw* dd, const dtInternalVertex& vertex, 
 	dd->end();
 }
 
-void duDebugDrawInternalEdge(duDebugDraw* dd, const dtInternalEdge& edge, unsigned int col, const float lineWidth/* = 1.0f*/)
+void duDebugDrawInternalEdge(duDebugDraw* dd, const dtPolyEdge& edge, unsigned int col, const float lineWidth/* = 1.0f*/)
 {
 	if (dd == nullptr) return;
 	if (!edge.isValid()) return;
@@ -71,12 +71,12 @@ void duDebugDrawInternalEdge(duDebugDraw* dd, const dtInternalEdge& edge, unsign
 	duDebugDrawArrow(dd, v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], 0.0f, 0.4f, col, lineWidth);
 }
 
-void duDebugDrawInternalFace(duDebugDraw* dd, const dtInternalFace& face, unsigned int col)
+void duDebugDrawInternalFace(duDebugDraw* dd, const dtPolyFace& face, unsigned int col)
 {
 	if (dd == nullptr) return;
 	if (!face.isValid()) return;
 
-	dtInternalVertex verts[3];
+	dtPolyVertex verts[3];
 	iterations::fromFaceToVertices iterFaceVerts(face);
 	auto num = iterFaceVerts.allVertices(verts, 3);
 	dtAssert(num == 3);
@@ -239,12 +239,12 @@ void NavMeshNonpointTesterTool::handleMenu()
 
 				
 				{
-					dtInternalVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
+					dtPolyVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
 
 					char buff[1024];
 
 					// 显示face的顶点索引
-					dtInternalVertex verts[3];
+					dtPolyVertex verts[3];
 					iterations::fromFaceToVertices iterFaceVerts(face);
 					auto num_verts = iterFaceVerts.allVertices(verts, 3);
 					dtAssert(num_verts == 3);
@@ -252,7 +252,7 @@ void NavMeshNonpointTesterTool::handleMenu()
 					imguiValue(buff);
 
 					// 显示face的邻接face
-					dtInternalFace faces[3];
+					dtPolyFace faces[3];
 					iterations::fromFaceToNeighborFace iterNeiFaces(face);
 					auto num_faces = iterNeiFaces.allFaces(faces, 3);
 					sprintf_s(
@@ -389,18 +389,18 @@ void NavMeshNonpointTesterTool::handleRender()
 
 			//duDebugDrawNavMeshPoly(&dd, *m_navMesh, m_debugPolyRef, faceCol);
 
-			dtInternalVertex vertex(m_navMesh, m_debugPolyRef, (int)m_debugVertexIdx);
+			dtPolyVertex vertex(m_navMesh, m_debugPolyRef, (int)m_debugVertexIdx);
 			duDebugDrawInternalVertex(&dd, vertex, startCol, 10.0f);
 
-			dtInternalVertex edge(m_navMesh, m_debugPolyRef, (int)m_debugEdgeIdx);
+			dtPolyVertex edge(m_navMesh, m_debugPolyRef, (int)m_debugEdgeIdx);
 			duDebugDrawInternalEdge(&dd, edge, startCol);
 
-			dtInternalVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
+			dtPolyVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
 			duDebugDrawInternalFace(&dd, face, endCol);
 
 			if (debugDrawNeiFaces)
 			{
-				dtInternalFace faces[3];
+				dtPolyFace faces[3];
 				iterations::fromFaceToNeighborFace iterNeiFaces(face);
 				auto num_faces = iterNeiFaces.allFaces(faces, 3);
 				for (int i = 0; i < num_faces; ++i)

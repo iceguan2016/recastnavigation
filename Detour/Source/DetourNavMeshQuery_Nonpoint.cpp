@@ -7,11 +7,11 @@
 
 static const float H_SCALE = 0.999f; // Search heuristic scale.
 
-dtInternalPrimitive dtInternalPrimitive::INVALID(nullptr, 0, -1);
+dtPolyPrimitive dtPolyPrimitive::INVALID(nullptr, 0, -1);
 
 dtStatus dtNavMeshQuery::findNearestFace(const float* center, const float* halfExtents,
 	const dtQueryFilter* filter,
-	dtInternalFace* nearestFace, float* nearestPt) const
+	dtPolyFace* nearestFace, float* nearestPt) const
 {
 	dtPolyRef nearestPoly = 0;
 	float nearestPos[3];
@@ -25,7 +25,7 @@ dtStatus dtNavMeshQuery::findNearestFace(const float* center, const float* halfE
 			if (!face.isValid())
 				break;
 
-			dtInternalVertex verts[3];
+			dtPolyVertex verts[3];
 			iterations::fromFaceToVertices iterFaceVerts(face);
 			auto num_verts = iterFaceVerts.allVertices(verts, 3);
 			dtAssert(num_verts == 3);
@@ -48,10 +48,10 @@ dtStatus dtNavMeshQuery::findNearestFace(const float* center, const float* halfE
 	return DT_FAILURE;
 }
 
-dtStatus dtNavMeshQuery::findPathByRadius(const dtInternalFace& startRef, const dtInternalFace& endRef,
+dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPolyFace& endRef,
 	const float* startPos, const float* endPos,
 	const dtQueryFilter* filter,
-	dtInternalFace* path, int* pathCount, const int maxPath,
+	dtPolyFace* path, int* pathCount, const int maxPath,
 	const float radius) const
 {
 	if (dtAbs(radius) < 0.01f)
@@ -111,7 +111,7 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtInternalFace& startRef, const 
 		bestNode->flags &= ~DT_NODE_OPEN;
 		bestNode->flags |= DT_NODE_CLOSED;
 
-		dtInternalFace bestFace(m_nav, bestNode->id, bestNode->primIdx);
+		dtPolyFace bestFace(m_nav, bestNode->id, bestNode->primIdx);
 		auto entryEdge = bestNode->entryEdge;
 
 		// Reached the goal, stop searching.
@@ -126,11 +126,11 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtInternalFace& startRef, const 
 		bestFace.getTileAndPoly(&bestTile, &bestPoly);
 
 		// Get parent poly and tile.
-		dtInternalFace parentFace;
+		dtPolyFace parentFace;
 		if (bestNode->pidx)
 		{
 			auto parentNode = m_nodePool->getNodeAtIdx(bestNode->pidx);
-			parentFace = dtInternalFace(m_nav, parentNode->id, parentNode->primIdx);
+			parentFace = dtPolyFace(m_nav, parentNode->id, parentNode->primIdx);
 		}
 
 		const dtMeshTile* parentTile = 0;
@@ -270,7 +270,7 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtInternalFace& startRef, const 
 	return status;
 }
 
-dtStatus dtNavMeshQuery::getPathToNode(dtNode* endNode, dtInternalFace* path, int* pathCount, int maxPath) const
+dtStatus dtNavMeshQuery::getPathToNode(dtNode* endNode, dtPolyFace* path, int* pathCount, int maxPath) const
 {
 	// Find the length of the entire path.
 	dtNode* curNode = endNode;
@@ -296,7 +296,7 @@ dtStatus dtNavMeshQuery::getPathToNode(dtNode* endNode, dtInternalFace* path, in
 	{
 		dtAssert(curNode);
 
-		path[i] = dtInternalFace(m_nav, curNode->id, curNode->primIdx);
+		path[i] = dtPolyFace(m_nav, curNode->id, curNode->primIdx);
 		curNode = m_nodePool->getNodeAtIdx(curNode->pidx);
 	}
 
@@ -314,29 +314,29 @@ namespace astar
 {
 	struct dtInternalPrimitiveHash
 	{
-		std::size_t operator()(const dtInternalPrimitive& p) const {
+		std::size_t operator()(const dtPolyPrimitive& p) const {
 			return std::hash<dtPolyRef>()(p.polyId) ^ (std::hash<int>()(p.innerIdx) << 1);
 		}
 	};
 
-	bool isWalkableByRadius(float radius, const dtInternalEdge& fromEdge, const dtInternalFace& throughFace, const dtInternalEdge& toEdge)
+	bool isWalkableByRadius(float radius, const dtPolyEdge& fromEdge, const dtPolyFace& throughFace, const dtPolyEdge& toEdge)
 	{
 		// we identify the points
-		dtInternalVertex fromEdgeOrigin, fromEdgeDestination;
+		dtPolyVertex fromEdgeOrigin, fromEdgeDestination;
 		if (!queriers::edgeOriginAndDestinationVertex(fromEdge, &fromEdgeOrigin, &fromEdgeDestination))
 		{
 			return false;
 		}
 
-		dtInternalVertex toEdgeOrigin, toEdgeDestination;
+		dtPolyVertex toEdgeOrigin, toEdgeDestination;
 		if (!queriers::edgeOriginAndDestinationVertex(toEdge, &toEdgeOrigin, &toEdgeDestination))
 		{
 			return false;
 		}
 
-		dtInternalVertex vA;  // the vertex on fromEdge not on toEdge  
-		dtInternalVertex vB;  // the vertex on toEdge not on fromEdge  
-		dtInternalVertex vC;  // the common vertex of the 2 edges (pivot) 
+		dtPolyVertex vA;  // the vertex on fromEdge not on toEdge  
+		dtPolyVertex vB;  // the vertex on toEdge not on fromEdge  
+		dtPolyVertex vC;  // the common vertex of the 2 edges (pivot) 
 
 		if (fromEdgeOrigin == toEdgeOrigin)
 		{
@@ -399,15 +399,15 @@ namespace astar
 		}
 
 		// we identify the adjacent edge (facing pivot vertex) 
-		dtInternalEdge faceEdge = queriers::faceEdge(throughFace);
+		dtPolyEdge faceEdge = queriers::faceEdge(throughFace);
 		if (!faceEdge) return false;
-		dtInternalEdge oppositeEdge = queriers::edgeOppositeEdge(faceEdge);
+		dtPolyEdge oppositeEdge = queriers::edgeOppositeEdge(faceEdge);
 		if (!oppositeEdge) return false;
-		dtInternalEdge nextLeftEdge = queriers::edgeNextLeftEdge(faceEdge);
+		dtPolyEdge nextLeftEdge = queriers::edgeNextLeftEdge(faceEdge);
 		if (!nextLeftEdge) return false;
-		dtInternalEdge nextLeftEdge_Opp = queriers::edgeOppositeEdge(nextLeftEdge);
+		dtPolyEdge nextLeftEdge_Opp = queriers::edgeOppositeEdge(nextLeftEdge);
 
-		dtInternalEdge adjEdge;
+		dtPolyEdge adjEdge;
 		if (faceEdge != fromEdge && oppositeEdge != fromEdge && faceEdge != toEdge && oppositeEdge != toEdge)
 		{
 			adjEdge = faceEdge;
@@ -449,10 +449,10 @@ namespace astar
 			}
 			else
 			{
-				std::list<dtInternalFace> faceToCheck;
-				std::list<dtInternalEdge> faceFromEdge;
+				std::list<dtPolyFace> faceToCheck;
+				std::list<dtPolyEdge> faceFromEdge;
 
-				std::unordered_set<dtInternalFace, dtInternalPrimitiveHash> faceDone;
+				std::unordered_set<dtPolyFace, dtInternalPrimitiveHash> faceDone;
 
 				faceFromEdge.push_back(adjEdge);
 				auto leftFace = queriers::edgeLeftFace(adjEdge);
@@ -480,7 +480,7 @@ namespace astar
 					auto faceEdge_Next = queriers::edgeNextLeftEdge(faceEdge);
 					auto fromEdge_Opp = queriers::edgeOppositeEdge(fromEdge);
 
-					dtInternalEdge currEdgeA, currEdgeB;
+					dtPolyEdge currEdgeA, currEdgeB;
 					if (faceEdge == fromEdge || faceEdge == fromEdge_Opp)
 					{
 						// we identify the 2 edges to evaluate
@@ -499,7 +499,7 @@ namespace astar
 						currEdgeB = faceEdge_Next;
 					}
 
-					dtInternalFace nextFaceA;
+					dtPolyFace nextFaceA;
 					auto currEdgeA_LeftFace = queriers::edgeLeftFace(currEdgeA);
 					if (currEdgeA_LeftFace == currFace)
 					{
@@ -510,7 +510,7 @@ namespace astar
 						nextFaceA = currEdgeA_LeftFace;
 					}
 
-					dtInternalFace nextFaceB;
+					dtPolyFace nextFaceB;
 					auto currEdgeB_LeftFace = queriers::edgeLeftFace(currEdgeB);
 					if (currEdgeB_LeftFace == currFace)
 					{

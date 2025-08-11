@@ -10,26 +10,26 @@
 typedef unsigned short dtPrimIndex;
 static const dtPrimIndex DT_INVALID_PRIM_INDEX = ~0;
 
-struct dtInternalPrimitive
+struct dtPolyPrimitive
 {
-	static dtInternalPrimitive INVALID;
+	static dtPolyPrimitive INVALID;
 
-	dtInternalPrimitive()
+	dtPolyPrimitive()
 		: navmesh(nullptr), polyId(0), innerIdx(DT_INVALID_PRIM_INDEX)
 	{
 	}
 
-	dtInternalPrimitive(const dtNavMesh* inNavmesh, const dtPolyRef& inPolyId, const dtPrimIndex& inInnerIdx)
+	dtPolyPrimitive(const dtNavMesh* inNavmesh, const dtPolyRef& inPolyId, const dtPrimIndex& inInnerIdx)
 		: navmesh(inNavmesh), polyId(inPolyId), innerIdx(inInnerIdx)
 	{
 	}
 
-	dtInternalPrimitive(const dtInternalPrimitive& inOther)
+	dtPolyPrimitive(const dtPolyPrimitive& inOther)
 	{
 		*this = inOther;
 	}
 
-	dtInternalPrimitive& operator=(const dtInternalPrimitive& inOther)
+	dtPolyPrimitive& operator=(const dtPolyPrimitive& inOther)
 	{
 		navmesh = inOther.navmesh;
 		polyId = inOther.polyId;
@@ -65,14 +65,14 @@ struct dtInternalPrimitive
 		return false;
 	}
 
-	bool operator==(const dtInternalPrimitive& inOther) const
+	bool operator==(const dtPolyPrimitive& inOther) const
 	{
 		return navmesh == inOther.navmesh &&
 			polyId == inOther.polyId &&
 			innerIdx == inOther.innerIdx;
 	}
 
-	bool operator!=(const dtInternalPrimitive& inOther) const
+	bool operator!=(const dtPolyPrimitive& inOther) const
 	{
 		return navmesh != inOther.navmesh ||
 			polyId != inOther.polyId ||
@@ -84,9 +84,9 @@ struct dtInternalPrimitive
 	dtPrimIndex		innerIdx;
 };
 
-typedef dtInternalPrimitive dtInternalVertex;
-typedef dtInternalPrimitive dtInternalEdge;
-typedef dtInternalPrimitive dtInternalFace;
+typedef dtPolyPrimitive dtPolyVertex;
+typedef dtPolyPrimitive dtPolyEdge;
+typedef dtPolyPrimitive dtPolyFace;
 
 
 namespace queriers
@@ -124,7 +124,7 @@ namespace queriers
 	*/
 
 	// Vertex
-	inline static bool vertexPosition(const dtInternalVertex& vertex, float* pos) 
+	inline static bool vertexPosition(const dtPolyVertex& vertex, float* pos) 
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -140,7 +140,7 @@ namespace queriers
 	}
 
 	// Edge
-	inline static dtInternalVertex edgeOriginVertex(const dtInternalEdge& edge)
+	inline static dtPolyVertex edgeOriginVertex(const dtPolyEdge& edge)
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -149,19 +149,19 @@ namespace queriers
 			if (edge.innerIdx < DT_VERTS_PER_POLYGON)
 			{
 				// 原始边
-				return dtInternalVertex(edge.navmesh, edge.polyId, edge.innerIdx);
+				return dtPolyVertex(edge.navmesh, edge.polyId, edge.innerIdx);
 			}
 			else
 			{
 				// 新增内部边(起点)
 				auto idx = edge.innerIdx - DT_VERTS_PER_POLYGON;
-				return (idx & 0x1) == 1 ? dtInternalVertex(edge.navmesh, edge.polyId, 0) : dtInternalVertex(edge.navmesh, edge.polyId, idx/2 + 2);
+				return (idx & 0x1) == 1 ? dtPolyVertex(edge.navmesh, edge.polyId, 0) : dtPolyVertex(edge.navmesh, edge.polyId, idx/2 + 2);
 			}
 		}
-		return dtInternalVertex::INVALID;
+		return dtPolyVertex::INVALID;
 	}
 
-	inline static dtInternalVertex edgeDestinationVertex(const dtInternalEdge& edge)
+	inline static dtPolyVertex edgeDestinationVertex(const dtPolyEdge& edge)
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -170,19 +170,19 @@ namespace queriers
 			if (edge.innerIdx < DT_VERTS_PER_POLYGON)
 			{
 				// 原始边
-				return dtInternalVertex(edge.navmesh, edge.polyId, (edge.innerIdx + 1) % poly->vertCount);
+				return dtPolyVertex(edge.navmesh, edge.polyId, (edge.innerIdx + 1) % poly->vertCount);
 			}
 			else
 			{
 				// 新增内部边(终点)
 				auto idx = edge.innerIdx - DT_VERTS_PER_POLYGON;
-				return (idx & 0x1) == 0 ? dtInternalVertex(edge.navmesh, edge.polyId, 0) : dtInternalVertex(edge.navmesh, edge.polyId, idx/2 + 2);
+				return (idx & 0x1) == 0 ? dtPolyVertex(edge.navmesh, edge.polyId, 0) : dtPolyVertex(edge.navmesh, edge.polyId, idx/2 + 2);
 			}
 		}
-		return dtInternalVertex::INVALID;
+		return dtPolyVertex::INVALID;
 	}
 
-	inline static bool edgeOriginAndDestinationVertex(const dtInternalEdge& edge, dtInternalVertex* origin, dtInternalVertex* destination)
+	inline static bool edgeOriginAndDestinationVertex(const dtPolyEdge& edge, dtPolyVertex* origin, dtPolyVertex* destination)
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -192,9 +192,9 @@ namespace queriers
 			{
 				// 原始边
 				if (origin)
-					*origin = dtInternalVertex(edge.navmesh, edge.polyId, edge.innerIdx);
+					*origin = dtPolyVertex(edge.navmesh, edge.polyId, edge.innerIdx);
 				if (destination)
-					*destination = dtInternalVertex(edge.navmesh, edge.polyId, (edge.innerIdx + 1) % poly->vertCount);
+					*destination = dtPolyVertex(edge.navmesh, edge.polyId, (edge.innerIdx + 1) % poly->vertCount);
 				return true;
 			}
 			else
@@ -204,16 +204,16 @@ namespace queriers
 				if ((idx & 0x1) == 1)
 				{
 					if (origin)
-						*origin = dtInternalVertex(edge.navmesh, edge.polyId, 0);
+						*origin = dtPolyVertex(edge.navmesh, edge.polyId, 0);
 					if (destination)
-						*destination = dtInternalVertex(edge.navmesh, edge.polyId, idx / 2 + 2);
+						*destination = dtPolyVertex(edge.navmesh, edge.polyId, idx / 2 + 2);
 				} 
 				else
 				{
 					if (origin)
-						*origin = dtInternalVertex(edge.navmesh, edge.polyId, idx / 2 + 2);
+						*origin = dtPolyVertex(edge.navmesh, edge.polyId, idx / 2 + 2);
 					if (destination)
-						*destination = dtInternalVertex(edge.navmesh, edge.polyId, 0);
+						*destination = dtPolyVertex(edge.navmesh, edge.polyId, 0);
 				}
 				return true;
 			}
@@ -221,7 +221,7 @@ namespace queriers
 		return false;
 	}
 
-	inline static dtInternalFace edgeLeftFace(const dtInternalEdge& edge)
+	inline static dtPolyFace edgeLeftFace(const dtPolyEdge& edge)
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -232,25 +232,25 @@ namespace queriers
 				// 原始边
 				if (edge.innerIdx < 2)
 				{
-					return dtInternalFace(edge.navmesh, edge.polyId, 0);
+					return dtPolyFace(edge.navmesh, edge.polyId, 0);
 				}
 				else if (edge.innerIdx > poly->vertCount - 3)
 				{
-					return dtInternalFace(edge.navmesh, edge.polyId, poly->vertCount - 3);
+					return dtPolyFace(edge.navmesh, edge.polyId, poly->vertCount - 3);
 				}
 				else
 				{
-					return dtInternalFace(edge.navmesh, edge.polyId, edge.innerIdx - 1);
+					return dtPolyFace(edge.navmesh, edge.polyId, edge.innerIdx - 1);
 				}
 			}
 			else
 			{
 				// 新增内部边
 				auto idx = edge.innerIdx - DT_VERTS_PER_POLYGON;
-				return (idx & 0x1) == 0 ? dtInternalFace(edge.navmesh, edge.polyId, idx / 2) : dtInternalFace(edge.navmesh, edge.polyId, idx / 2 + 1);
+				return (idx & 0x1) == 0 ? dtPolyFace(edge.navmesh, edge.polyId, idx / 2) : dtPolyFace(edge.navmesh, edge.polyId, idx / 2 + 1);
 			}
 		}
-		return dtInternalFace::INVALID;
+		return dtPolyFace::INVALID;
 	}
 
 	inline static int sharedEdgeIndex(const dtNavMesh* nav, const dtPolyRef from, const dtPolyRef to)
@@ -270,7 +270,7 @@ namespace queriers
 		return -1;
 	}
 
-	inline static dtInternalEdge edgeOppositeEdge(const dtInternalEdge& edge)
+	inline static dtPolyEdge edgeOppositeEdge(const dtPolyEdge& edge)
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -293,7 +293,7 @@ namespace queriers
 							if (link->ref != 0)
 							{
 								int neiEdgeIdx = sharedEdgeIndex(edge.navmesh, link->ref, edge.polyId);
-								return dtInternalEdge(edge.navmesh, link->ref, neiEdgeIdx);
+								return dtPolyEdge(edge.navmesh, link->ref, neiEdgeIdx);
 							}
 						}
 					}
@@ -305,20 +305,20 @@ namespace queriers
 					const dtPolyRef ref = edge.navmesh->getPolyRefBase(tile) | idx;
 
 					int neiEdgeIdx = sharedEdgeIndex(edge.navmesh, ref, edge.polyId);
-					return dtInternalEdge(edge.navmesh, ref, neiEdgeIdx);
+					return dtPolyEdge(edge.navmesh, ref, neiEdgeIdx);
 				}
 			}
 			else
 			{
 				// 新增内部边
 				auto idx = edge.innerIdx;
-				return (idx & 0x1) == 0 ? dtInternalEdge(edge.navmesh, edge.polyId, idx + 1) : dtInternalVertex(edge.navmesh, edge.polyId, idx - 1);
+				return (idx & 0x1) == 0 ? dtPolyEdge(edge.navmesh, edge.polyId, idx + 1) : dtPolyVertex(edge.navmesh, edge.polyId, idx - 1);
 			}
 		}
-		return dtInternalEdge::INVALID;
+		return dtPolyEdge::INVALID;
 	}
 
-	inline static dtInternalEdge edgeNextLeftEdge(const dtInternalEdge& edge)
+	inline static dtPolyEdge edgeNextLeftEdge(const dtPolyEdge& edge)
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -356,14 +356,14 @@ namespace queriers
 			{
 				if (edges[k] == edge.innerIdx)
 				{
-					return dtInternalEdge(edge.navmesh, edge.polyId, edges[(k + 1) % 3]);
+					return dtPolyEdge(edge.navmesh, edge.polyId, edges[(k + 1) % 3]);
 				}
 			}
 		}
-		return dtInternalEdge::INVALID;
+		return dtPolyEdge::INVALID;
 	}
 
-	inline static dtInternalEdge edgePrevLeftEdge(const dtInternalEdge& edge)
+	inline static dtPolyEdge edgePrevLeftEdge(const dtPolyEdge& edge)
 	{
 		do
 		{
@@ -371,10 +371,10 @@ namespace queriers
 			if (!currEdge.isValid()) break;
 			return edgeNextLeftEdge(currEdge);
 		} while (false);
-		return dtInternalEdge::INVALID;
+		return dtPolyEdge::INVALID;
 	}
 
-	inline static dtInternalEdge edgeNextRightEdge(const dtInternalEdge& edge)
+	inline static dtPolyEdge edgeNextRightEdge(const dtPolyEdge& edge)
 	{
 		do
 		{
@@ -386,10 +386,10 @@ namespace queriers
 			if (!currEdge.isValid()) break;
 			return edgeOppositeEdge(currEdge);
 		} while (false);
-		return dtInternalEdge::INVALID;
+		return dtPolyEdge::INVALID;
 	}
 
-	inline static dtInternalEdge edgePrevRightEdge(const dtInternalEdge& edge)
+	inline static dtPolyEdge edgePrevRightEdge(const dtPolyEdge& edge)
 	{
 		do
 		{
@@ -398,10 +398,10 @@ namespace queriers
 			currEdge = edgeNextLeftEdge(currEdge);
 			return edgeOppositeEdge(currEdge);
 		} while (false);
-		return dtInternalEdge::INVALID;
+		return dtPolyEdge::INVALID;
 	}
 
-	inline static dtInternalFace edgeRightFace(const dtInternalEdge& edge)
+	inline static dtPolyFace edgeRightFace(const dtPolyEdge& edge)
 	{
 		do
 		{
@@ -409,10 +409,10 @@ namespace queriers
 			if (!currEdge.isValid()) break;
 			return edgeLeftFace(currEdge);
 		} while (false);
-		return dtInternalFace::INVALID;
+		return dtPolyFace::INVALID;
 	}
 
-	inline static bool edgeIsBoundary(const dtInternalEdge& edge)
+	inline static bool edgeIsBoundary(const dtPolyEdge& edge)
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -435,7 +435,7 @@ namespace queriers
 	}
 
 	// Face
-	inline static dtInternalEdge faceEdge(const dtInternalFace& face)
+	inline static dtPolyEdge faceEdge(const dtPolyFace& face)
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -463,12 +463,12 @@ namespace queriers
 					edgeIndex = 7 + (i - 1) * 2;
 				}
 			}
-			return dtInternalEdge(face.navmesh, face.polyId, edgeIndex);
+			return dtPolyEdge(face.navmesh, face.polyId, edgeIndex);
 		}
-		return dtInternalEdge::INVALID;
+		return dtPolyEdge::INVALID;
 	}
 
-	inline static void faceAllEdges(const dtInternalFace& face, dtInternalEdge outEdges[3])
+	inline static void faceAllEdges(const dtPolyFace& face, dtPolyEdge outEdges[3])
 	{
 		const dtMeshTile* tile = 0;
 		const dtPoly* poly = 0;
@@ -503,7 +503,7 @@ namespace queriers
 
 			for (int k = 0; k < 3; ++k)
 			{
-				outEdges[k] = dtInternalEdge(face.navmesh, face.polyId, edges[(k + 1) % 3]);
+				outEdges[k] = dtPolyEdge(face.navmesh, face.polyId, edges[(k + 1) % 3]);
 			}
 		}
 	}
@@ -513,14 +513,14 @@ namespace iterations
 {
 	struct fromFaceToInnerEdges
 	{
-		fromFaceToInnerEdges(const dtInternalFace& fromFace)
+		fromFaceToInnerEdges(const dtPolyFace& fromFace)
 			: _fromFace(fromFace)
 		{
 			_fromFaceEdge = queriers::faceEdge(fromFace);
 			_nextEdge = _fromFaceEdge;
 		}
 
-		dtInternalEdge next()
+		dtPolyEdge next()
 		{
 			if (_nextEdge.isValid())
 			{
@@ -528,33 +528,33 @@ namespace iterations
 				_nextEdge = queriers::edgeNextLeftEdge(_nextEdge);
 				if (_nextEdge == _fromFaceEdge)
 				{
-					_nextEdge = dtInternalEdge::INVALID;
+					_nextEdge = dtPolyEdge::INVALID;
 				}
 			}
 			else 
 			{
-				_resultEdge = dtInternalEdge::INVALID;
+				_resultEdge = dtPolyEdge::INVALID;
 			}
 
 			return _resultEdge;
 		}
 
-		dtInternalFace _fromFace;
-		dtInternalEdge _fromFaceEdge;
-		dtInternalEdge _nextEdge;
-		dtInternalFace _resultEdge;
+		dtPolyFace _fromFace;
+		dtPolyEdge _fromFaceEdge;
+		dtPolyEdge _nextEdge;
+		dtPolyFace _resultEdge;
 	};
 
 	struct fromFaceToVertices
 	{
-		fromFaceToVertices(const dtInternalFace& fromFace)
+		fromFaceToVertices(const dtPolyFace& fromFace)
 			: _fromFace(fromFace)
 		{
 			_fromFaceEdge = queriers::faceEdge(fromFace);
 			_nextEdge = _fromFaceEdge;
 		}
 
-		dtInternalVertex next()
+		dtPolyVertex next()
 		{
 			if (_nextEdge.isValid())
 			{
@@ -562,17 +562,17 @@ namespace iterations
 				_nextEdge = queriers::edgeNextLeftEdge(_nextEdge);
 				if (_nextEdge == _fromFaceEdge)
 				{
-					_nextEdge = dtInternalEdge::INVALID;
+					_nextEdge = dtPolyEdge::INVALID;
 				}
 			}
 			else 
 			{
-				_resultVertex = dtInternalVertex::INVALID;
+				_resultVertex = dtPolyVertex::INVALID;
 			}
 			return _resultVertex;
 		}
 
-		int allVertices(dtInternalVertex *outVerts, int maxVertNum)
+		int allVertices(dtPolyVertex *outVerts, int maxVertNum)
 		{
 			int vi = 0;
 			do 
@@ -590,22 +590,22 @@ namespace iterations
 			return vi;
 		}
 
-		dtInternalFace _fromFace;
-		dtInternalEdge _fromFaceEdge;
-		dtInternalEdge _nextEdge;
-		dtInternalVertex _resultVertex;
+		dtPolyFace _fromFace;
+		dtPolyEdge _fromFaceEdge;
+		dtPolyEdge _nextEdge;
+		dtPolyVertex _resultVertex;
 	};
 
 	struct fromFaceToNeighborFace
 	{
-		fromFaceToNeighborFace(const dtInternalFace& fromFace)
+		fromFaceToNeighborFace(const dtPolyFace& fromFace)
 			: _fromFace(fromFace)
 		{
 			_fromFaceEdge = queriers::faceEdge(fromFace);
 			_nextEdge = _fromFaceEdge;
 		}
 
-		dtInternalFace next()
+		dtPolyFace next()
 		{
 			if (_nextEdge.isValid()) 
 			{
@@ -615,7 +615,7 @@ namespace iterations
 					_nextEdge = queriers::edgeNextLeftEdge(_nextEdge);
 					if (_nextEdge == _fromFaceEdge)
 					{
-						_nextEdge = dtInternalEdge::INVALID;
+						_nextEdge = dtPolyEdge::INVALID;
 						break;
 					}
 					if (_resultFace.isValid())
@@ -626,13 +626,13 @@ namespace iterations
 			}
 			else
 			{
-				_resultFace = dtInternalFace::INVALID;
+				_resultFace = dtPolyFace::INVALID;
 			}
 
 			return _resultFace;
 		}
 
-		int allFaces(dtInternalFace* outFaces, int maxFaceNum)
+		int allFaces(dtPolyFace* outFaces, int maxFaceNum)
 		{
 			int fi = 0;
 			do
@@ -650,10 +650,10 @@ namespace iterations
 			return fi;
 		}
 
-		dtInternalFace _fromFace;
-		dtInternalEdge _fromFaceEdge;
-		dtInternalEdge _nextEdge;
-		dtInternalFace _resultFace;
+		dtPolyFace _fromFace;
+		dtPolyEdge _fromFaceEdge;
+		dtPolyEdge _nextEdge;
+		dtPolyFace _resultFace;
 	};
 
 	struct fromPolyToInternalFaces
@@ -673,11 +673,11 @@ namespace iterations
 			}
 		}
 
-		dtInternalFace next()
+		dtPolyFace next()
 		{
 			if (_poly && _faceIdx < _poly->vertCount)
 			{
-				_resultFace = dtInternalFace(_nav, _ref, _faceIdx);
+				_resultFace = dtPolyFace(_nav, _ref, _faceIdx);
 				++_faceIdx;
 			}
 			else
@@ -691,15 +691,15 @@ namespace iterations
 		dtPolyRef			_ref;
 		const dtPoly*		_poly;	
 		int					_faceIdx;
-		dtInternalFace		_resultFace;
+		dtPolyFace		_resultFace;
 	};
 }
 
 namespace geom
 {
-	inline static bool projectPointOnEdge(const float* p, const dtInternalEdge& edge, float* proj)
+	inline static bool projectPointOnEdge(const float* p, const dtPolyEdge& edge, float* proj)
 	{
-		dtInternalVertex v0, v1;
+		dtPolyVertex v0, v1;
 		if (queriers::edgeOriginAndDestinationVertex(edge, &v0, &v1))
 		{
 			float p0[3], p1[3];
@@ -717,9 +717,9 @@ namespace geom
 		return false;
 	}
 
-	inline static float distanceSquaredPointToEdge(const float* p, const dtInternalEdge& edge)
+	inline static float distanceSquaredPointToEdge(const float* p, const dtPolyEdge& edge)
 	{
-		dtInternalVertex v0, v1;
+		dtPolyVertex v0, v1;
 		if (queriers::edgeOriginAndDestinationVertex(edge, &v0, &v1))
 		{
 			float a[3], b[3];
@@ -758,7 +758,7 @@ namespace geom
 		return 0.0f;
 	}
 
-	inline static float distanceSquaredVertexToEdge(const dtInternalVertex& vertex, const dtInternalEdge& edge)
+	inline static float distanceSquaredVertexToEdge(const dtPolyVertex& vertex, const dtPolyEdge& edge)
 	{
 		float p[3];
 		if (queriers::vertexPosition(vertex, p))
@@ -768,9 +768,9 @@ namespace geom
 		return 0.0f;
 	}
 
-	inline static bool closestPointToEdge(const float* p, const dtInternalEdge& edge, float* closest)
+	inline static bool closestPointToEdge(const float* p, const dtPolyEdge& edge, float* closest)
 	{
-		dtInternalVertex v0, v1;
+		dtPolyVertex v0, v1;
 		if (queriers::edgeOriginAndDestinationVertex(edge, &v0, &v1))
 		{
 			float a[3], b[3];
@@ -813,7 +813,7 @@ namespace geom
 namespace astar
 {
 	// 检查通过throughFace从fromEdge到toEdge，半径为radius的单位是否能够通过
-	bool isWalkableByRadius(float radius, const dtInternalEdge& fromEdge, const dtInternalFace& throughFace, const dtInternalEdge& toEdge);
+	bool isWalkableByRadius(float radius, const dtPolyEdge& fromEdge, const dtPolyFace& throughFace, const dtPolyEdge& toEdge);
 }
 
 namespace debug

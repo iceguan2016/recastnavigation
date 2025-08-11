@@ -5,9 +5,9 @@
 #include "DetourNavMesh.h"
 #include "DetourNavMeshQuery.h"
 
-void duDebugDrawInternalVertex(duDebugDraw* dd, const dtInternalVertex& vertex, unsigned int col, const float size=3.0f);
-void duDebugDrawInternalEdge(duDebugDraw* dd, const dtInternalEdge& edge, unsigned int col, const float lineWidth=1.0f);
-void duDebugDrawInternalFace(duDebugDraw* dd, const dtInternalFace& face, unsigned int col);
+void duDebugDrawInternalVertex(duDebugDraw* dd, const dtPolyVertex& vertex, unsigned int col, const float size=3.0f);
+void duDebugDrawInternalEdge(duDebugDraw* dd, const dtPolyEdge& edge, unsigned int col, const float lineWidth=1.0f);
+void duDebugDrawInternalFace(duDebugDraw* dd, const dtPolyFace& face, unsigned int col);
 
 class NavMeshNonpointTesterTool : public SampleTool
 {
@@ -33,8 +33,8 @@ class NavMeshNonpointTesterTool : public SampleTool
 	static const int MAX_POLYS = 256;
 	static const int MAX_SMOOTH = 2048;
 
-	dtInternalFace m_startRef;
-	dtInternalFace m_endRef;
+	dtPolyFace m_startRef;
+	dtPolyFace m_endRef;
 	float m_polyPickExt[3];
 
 	float m_spos[3];

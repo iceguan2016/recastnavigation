@@ -523,15 +523,15 @@ public:
 	/// Non-point
 	dtStatus findNearestFace(const float* center, const float* halfExtents,
 		const dtQueryFilter* filter,
-		dtInternalFace* nearestFace, float* nearestPt) const;
+		dtPolyFace* nearestFace, float* nearestPt) const;
 	
-	dtStatus findPathByRadius(const dtInternalFace& startRef, const dtInternalFace& endRef,
+	dtStatus findPathByRadius(const dtPolyFace& startRef, const dtPolyFace& endRef,
 		const float* startPos, const float* endPos,
 		const dtQueryFilter* filter,
-		dtInternalFace* path, int* pathCount, const int maxPath,
+		dtPolyFace* path, int* pathCount, const int maxPath,
 		const float radius) const;
 
-	dtStatus dtNavMeshQuery::getPathToNode(struct dtNode* endNode, dtInternalFace* path, int* pathCount, int maxPath) const;
+	dtStatus dtNavMeshQuery::getPathToNode(struct dtNode* endNode, dtPolyFace* path, int* pathCount, int maxPath) const;
 	/// @}
 	
 private:
