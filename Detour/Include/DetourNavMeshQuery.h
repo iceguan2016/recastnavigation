@@ -525,10 +525,13 @@ public:
 		const dtQueryFilter* filter,
 		dtInternalFace* nearestFace, float* nearestPt) const;
 	
-	dtStatus findPath(const dtInternalFace& startRef, const dtInternalFace& endRef,
+	dtStatus findPathByRadius(const dtInternalFace& startRef, const dtInternalFace& endRef,
 		const float* startPos, const float* endPos,
 		const dtQueryFilter* filter,
-		dtInternalFace* path, int* pathCount, const int maxPath) const;
+		dtInternalFace* path, int* pathCount, const int maxPath,
+		const float radius) const;
+
+	dtStatus dtNavMeshQuery::getPathToNode(struct dtNode* endNode, dtInternalFace* path, int* pathCount, int maxPath) const;
 	/// @}
 	
 private:

@@ -767,12 +767,53 @@ namespace geom
 		}
 		return 0.0f;
 	}
+
+	inline static bool closestPointToEdge(const float* p, const dtInternalEdge& edge, float* closest)
+	{
+		dtInternalVertex v0, v1;
+		if (queriers::edgeOriginAndDestinationVertex(edge, &v0, &v1))
+		{
+			float a[3], b[3];
+			queriers::vertexPosition(v0, a);
+			queriers::vertexPosition(v1, b);
+
+			float ab[3], ap[3];
+			dtVsub(ab, b, a);
+			dtVsub(ap, p, a);
+			float d = dtVdot(ab, ap);
+			float abSqr = dtVlenSqr(ab);
+			if (dtAbs(abSqr) < 0.01f)
+			{
+				dtVcopy(closest, a);
+				return true;
+			}
+			else
+			{
+				auto t = d / abSqr;
+				if (t < 0.0f)
+				{
+					dtVcopy(closest, a);
+				}
+				else if (t > 1.0f)
+				{
+					dtVcopy(closest, b);
+				}
+				else
+				{
+					dtVmad(closest, a, ab, t);
+				}
+				return true;
+			}
+			return false;
+		}
+		return false;
+	}
 }
 
 namespace astar
 {
 	// 检查通过throughFace从fromEdge到toEdge，半径为radius的单位是否能够通过
-	bool isWalkableByRedius(float radius, const dtInternalEdge& fromEdge, const dtInternalFace& throughFace, const dtInternalEdge& toEdge);
+	bool isWalkableByRadius(float radius, const dtInternalEdge& fromEdge, const dtInternalFace& throughFace, const dtInternalEdge& toEdge);
 }
 
 namespace debug

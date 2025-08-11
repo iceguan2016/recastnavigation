@@ -1,8 +1,11 @@
 ﻿#include "DetourNavMeshQuery_Nonpoint.h"
 #include "DetourNavMeshQuery.h"
+#include "DetourNode.h"
 
 #include <list>
 #include <unordered_set>
+
+static const float H_SCALE = 0.999f; // Search heuristic scale.
 
 dtInternalPrimitive dtInternalPrimitive::INVALID(nullptr, 0, -1);
 
@@ -45,12 +48,266 @@ dtStatus dtNavMeshQuery::findNearestFace(const float* center, const float* halfE
 	return DT_FAILURE;
 }
 
-dtStatus dtNavMeshQuery::findPath(const dtInternalFace& startRef, const dtInternalFace& endRef,
+dtStatus dtNavMeshQuery::findPathByRadius(const dtInternalFace& startRef, const dtInternalFace& endRef,
 	const float* startPos, const float* endPos,
 	const dtQueryFilter* filter,
-	dtInternalFace* path, int* pathCount, const int maxPath) const
+	dtInternalFace* path, int* pathCount, const int maxPath,
+	const float radius) const
 {
-	return DT_FAILURE;
+	if (dtAbs(radius) < 0.01f)
+	{
+		return DT_FAILURE;
+	}
+	
+	dtAssert(m_nav);
+	dtAssert(m_nodePool);
+	dtAssert(m_openList);
+
+	if (!pathCount)
+		return DT_FAILURE | DT_INVALID_PARAM;
+
+	*pathCount = 0;
+
+	// Validate input
+	if (!startRef.isValid() || !endRef.isValid() ||
+		startRef.navmesh != m_nav || endRef.navmesh != m_nav ||
+		!startPos || !dtVisfinite(startPos) ||
+		!endPos || !dtVisfinite(endPos) ||
+		!filter || !path || maxPath <= 0)
+	{
+		return DT_FAILURE | DT_INVALID_PARAM;
+	}
+
+	if (startRef == endRef)
+	{
+		path[0] = startRef;
+		*pathCount = 1;
+		return DT_SUCCESS;
+	}
+
+	m_nodePool->clear();
+	m_openList->clear();
+
+	dtNode* startNode = m_nodePool->getNode(startRef.polyId, 0, startRef.innerIdx);
+	dtVcopy(startNode->pos, startPos);
+	startNode->pidx = 0;
+	startNode->cost = 0;
+	startNode->total = dtVdist(startPos, endPos) * H_SCALE;
+	startNode->id = startRef.polyId;
+	startNode->primIdx = startRef.innerIdx;
+	startNode->entryEdge.reset();
+	startNode->flags = DT_NODE_OPEN;
+	m_openList->push(startNode);
+
+	dtNode* lastBestNode = startNode;
+	float lastBestNodeCost = startNode->total;
+
+	bool outOfNodes = false;
+
+	while (!m_openList->empty())
+	{
+		// Remove node from open list and put it in closed list.
+		dtNode* bestNode = m_openList->pop();
+		bestNode->flags &= ~DT_NODE_OPEN;
+		bestNode->flags |= DT_NODE_CLOSED;
+
+		dtInternalFace bestFace(m_nav, bestNode->id, bestNode->primIdx);
+		auto entryEdge = bestNode->entryEdge;
+
+		// Reached the goal, stop searching.
+		if (bestFace == endRef)
+		{
+			lastBestNode = bestNode;
+			break;
+		}
+
+		const dtMeshTile* bestTile = 0;
+		const dtPoly* bestPoly = 0;
+		bestFace.getTileAndPoly(&bestTile, &bestPoly);
+
+		// Get parent poly and tile.
+		dtInternalFace parentFace;
+		if (bestNode->pidx)
+		{
+			auto parentNode = m_nodePool->getNodeAtIdx(bestNode->pidx);
+			parentFace = dtInternalFace(m_nav, parentNode->id, parentNode->primIdx);
+		}
+
+		const dtMeshTile* parentTile = 0;
+		const dtPoly* parentPoly = 0;
+		parentFace.getTileAndPoly(&parentTile, &parentPoly);
+
+		iterations::fromFaceToInnerEdges iterInnerEdges(bestFace);
+
+		do 
+		{
+			auto innerEdge = iterInnerEdges.next();
+			if (!innerEdge.isValid())
+				break;
+
+			auto neighbourFace = queriers::edgeRightFace(innerEdge);
+
+			// Skip invalid ids and do not expand back to where we came from.
+			if (!neighbourFace.isValid()
+				|| neighbourFace == bestFace
+				|| neighbourFace == parentFace)
+			{
+				continue;
+			}
+
+			// Get neighbour poly and tile.
+			const dtMeshTile* neighbourTile = 0;
+			const dtPoly* neighbourPoly = 0;
+			neighbourFace.getTileAndPoly(&neighbourTile, &neighbourPoly);
+
+			if (!filter->passFilter(neighbourFace.polyId, neighbourTile, neighbourPoly))
+				continue;
+
+			// check radius
+			if (bestFace != startRef
+				&& radius > 0.0f
+				&& !astar::isWalkableByRadius(radius, entryEdge, bestFace, innerEdge))
+			{
+				continue;
+			}
+
+			// Get neighbor node
+			dtNode* neighbourNode = m_nodePool->getNode(neighbourFace.polyId, 0, neighbourFace.innerIdx);
+			if (!neighbourNode)
+			{
+				outOfNodes = true;
+				continue;
+			}
+
+			// If the node is visited the first time, calculate node position.
+			if (neighbourNode->flags == 0)
+			{
+				if (!geom::closestPointToEdge(bestNode->pos, innerEdge, neighbourNode->pos))
+				{
+					break;
+				}
+			}
+
+			// Calculate cost and heuristic.
+			float cost = 0;
+			float heuristic = 0;
+
+			// Special case for last node.
+			if (neighbourFace == endRef)
+			{
+				// Cost
+				const float curCost = filter->getCost(bestNode->pos, neighbourNode->pos,
+					parentFace.polyId, parentTile, parentPoly,
+					bestFace.polyId, bestTile, bestPoly,
+					neighbourFace.polyId, neighbourTile, neighbourPoly);
+				const float endCost = filter->getCost(neighbourNode->pos, endPos,
+					bestFace.polyId, bestTile, bestPoly,
+					neighbourFace.polyId, neighbourTile, neighbourPoly,
+					0, 0, 0);
+
+				cost = bestNode->cost + curCost + endCost;
+				heuristic = 0;
+			}
+			else
+			{
+				// Cost
+				const float curCost = filter->getCost(bestNode->pos, neighbourNode->pos,
+					parentFace.polyId, parentTile, parentPoly,
+					bestFace.polyId, bestTile, bestPoly,
+					neighbourFace.polyId, neighbourTile, neighbourPoly);
+				cost = bestNode->cost + curCost;
+				heuristic = dtVdist(neighbourNode->pos, endPos) * H_SCALE;
+			}
+
+			const float total = cost + heuristic;
+
+			// The node is already in open list and the new result is worse, skip.
+			if ((neighbourNode->flags & DT_NODE_OPEN) && total >= neighbourNode->total)
+				continue;
+			// The node is already visited and process, and the new result is worse, skip.
+			if ((neighbourNode->flags & DT_NODE_CLOSED) && total >= neighbourNode->total)
+				continue;
+
+			// Add or update the node.
+			neighbourNode->pidx = m_nodePool->getNodeIdx(bestNode);
+			neighbourNode->id = neighbourFace.polyId;
+			neighbourNode->primIdx = neighbourFace.innerIdx;
+			neighbourNode->entryEdge = innerEdge;
+			neighbourNode->flags = (neighbourNode->flags & ~DT_NODE_CLOSED);
+			neighbourNode->cost = cost;
+			neighbourNode->total = total;
+
+			if (neighbourNode->flags & DT_NODE_OPEN)
+			{
+				// Already in open, update node location.
+				m_openList->modify(neighbourNode);
+			}
+			else
+			{
+				// Put the node in open list.
+				neighbourNode->flags |= DT_NODE_OPEN;
+				m_openList->push(neighbourNode);
+			}
+
+			// Update nearest node to target so far.
+			if (heuristic < lastBestNodeCost)
+			{
+				lastBestNodeCost = heuristic;
+				lastBestNode = neighbourNode;
+			}
+		} while(true);
+	}
+
+	dtStatus status = getPathToNode(lastBestNode, path, pathCount, maxPath);
+
+	if (lastBestNode->id != endRef.polyId &&
+		lastBestNode->primIdx != endRef.innerIdx)
+		status |= DT_PARTIAL_RESULT;
+
+	if (outOfNodes)
+		status |= DT_OUT_OF_NODES;
+
+	return status;
+}
+
+dtStatus dtNavMeshQuery::getPathToNode(dtNode* endNode, dtInternalFace* path, int* pathCount, int maxPath) const
+{
+	// Find the length of the entire path.
+	dtNode* curNode = endNode;
+	int length = 0;
+	do
+	{
+		length++;
+		curNode = m_nodePool->getNodeAtIdx(curNode->pidx);
+	} while (curNode);
+
+	// If the path cannot be fully stored then advance to the last node we will be able to store.
+	curNode = endNode;
+	int writeCount;
+	for (writeCount = length; writeCount > maxPath; writeCount--)
+	{
+		dtAssert(curNode);
+
+		curNode = m_nodePool->getNodeAtIdx(curNode->pidx);
+	}
+
+	// Write path
+	for (int i = writeCount - 1; i >= 0; i--)
+	{
+		dtAssert(curNode);
+
+		path[i] = dtInternalFace(m_nav, curNode->id, curNode->primIdx);
+		curNode = m_nodePool->getNodeAtIdx(curNode->pidx);
+	}
+
+	dtAssert(!curNode);
+
+	*pathCount = dtMin(length, maxPath);
+
+	if (length > maxPath)
+		return DT_SUCCESS | DT_BUFFER_TOO_SMALL;
+
+	return DT_SUCCESS;
 }
 
 namespace astar
@@ -62,7 +319,7 @@ namespace astar
 		}
 	};
 
-	bool isWalkableByRedius(float radius, const dtInternalEdge& fromEdge, const dtInternalFace& throughFace, const dtInternalEdge& toEdge)
+	bool isWalkableByRadius(float radius, const dtInternalEdge& fromEdge, const dtInternalFace& throughFace, const dtInternalEdge& toEdge)
 	{
 		// we identify the points
 		dtInternalVertex fromEdgeOrigin, fromEdgeDestination;

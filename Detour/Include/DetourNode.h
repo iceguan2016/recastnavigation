@@ -46,6 +46,7 @@ struct dtNode
 
 	//
 	dtPrimIndex primIdx;						///< Triangle-based Pathfinding Index
+	dtInternalEdge entryEdge;
 };
 
 static const int DT_MAX_STATES_PER_NODE = 1 << DT_NODE_STATE_BITS;	// number of extra states per node. See dtNode::state
