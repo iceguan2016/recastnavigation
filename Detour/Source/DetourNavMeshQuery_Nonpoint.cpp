@@ -126,11 +126,11 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 		auto entryEdge = bestNode->entryEdge;
 
 #if DT_DEBUG_ASTAR
-		if (iterTimes >= maxIters)
+		++iterTimes;
+		if (iterTimes > maxIters)
 		{
 			break;
 		}
-		++iterTimes;
 
 		if (visitNodes && nVisitNodes < maxVisitNode)
 		{

@@ -6,6 +6,10 @@
 #include "DetourCommon.h"
 #include "DetourNavMesh.h"
 
+#include <fstream>
+#include <sstream>
+#include <chrono>
+
 #define DT_DEBUG_ASTAR 1
 
 // 处理带有半径的单位寻路
@@ -826,5 +830,105 @@ namespace astar
 
 namespace debug
 {
+	enum class LogLevel 
+	{
+		INFO,
+		WARNING,
+		CRITICAL
+	};
+
+	class dtLogger
+	{
+	public:
+		static void Init(
+			LogLevel level = LogLevel::INFO,
+			const std::string& baseName = "app",
+			const std::string& logDir = "./logs"
+		) {
+			auto& instance = GetInstance();
+
+			instance.minLevel = level;
+			instance.logBaseName = baseName;
+			instance.logDirectory = logDir;
+
+			// 确保日志目录存在
+			/*if (!fs::exists(instance.logDirectory)) {
+				fs::create_directories(instance.logDirectory);
+			}*/
+
+			// 打开初始日志文件
+			OpenCurrentLogFile();
+		}
+
+		template <typename... Args>
+		static void Log(LogLevel level, const char* file, int line, const char* format, Args&&... args) 
+		{
+			auto& instance = GetInstance();
+			if (level < instance.minLevel) return;
+
+			// 获取当前时间
+			auto now = std::time(nullptr);
+			char timeStr[20];
+			std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+
+			char messge[1204];
+			vsprintf_s(messge, 1024, fmt, args...);
+
+			if (instance.fileStream.is_open()) {
+				instance.fileStream << timeStr << " " << message << "\n";
+				instance.fileStream.flush();
+			}
+		}
+
+	private:
+		// 单例模式
+		static dtLogger& GetInstance() 
+		{
+			static dtLogger instance;
+			return instance;
+		}
+
+		// 构造函数私有
+		dtLogger() : minLevel(LogLevel::INFO) {}
+
+		// 禁止复制
+		dtLogger(const dtLogger&) = delete;
+		dtLogger& operator=(const dtLogger&) = delete;
+
+		// 打开带时间戳的日志文件
+		static void OpenCurrentLogFile() {
+			auto& instance = GetInstance();
+
+			// 获取当前日期用于文件名
+			auto now = std::chrono::system_clock::now();
+			auto now_c = std::chrono::system_clock::to_time_t(now);
+			std::tm tm = {};
+#ifdef _WIN32
+			localtime_s(&tm, &now_c);
+#else
+			localtime_r(&now_c, &tm);
+#endif
+
+			char dateStr[20];
+			std::strftime(dateStr, sizeof(dateStr), "%Y%m%d", &tm);
+
+			// 构造带时间戳的文件名
+			std::ostringstream filename;
+			filename << instance.logBaseName << "_" << dateStr << ".log";
+			std::string filePath = instance.logDirectory + "/" + filename.str();
+
+			// 打开文件
+			instance.fileStream.open(filePath, std::ios::app);
+		}
+
+		LogLevel		minLevel;
+		std::string		logBaseName;
+		std::string		logDirectory;
+		std::ofstream	fileStream;
+	};
+
+#define LOG_INFO(format, ...)     dtLogger::Log(LogLevel::INFO,     __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_WARNING(format, ...)  dtLogger::Log(LogLevel::WARNING,  __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_CRITICAL(format, ...) dtLogger::Log(LogLevel::CRITICAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
 }
 #endif // DETOURNAVMESHQUERY_NONPOINT_H

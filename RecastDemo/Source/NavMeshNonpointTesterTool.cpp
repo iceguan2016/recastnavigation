@@ -156,6 +156,8 @@ void NavMeshNonpointTesterTool::init(Sample* sample)
 		m_filter.setAreaCost(SAMPLE_POLYAREA_GRASS, 2.0f);
 		m_filter.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
 	}
+
+	debug::dtLogger::Init(debug::LogLevel::INFO, "myapp", "./logs");
 }
 
 void NavMeshNonpointTesterTool::handleMenu()
@@ -231,6 +233,7 @@ void NavMeshNonpointTesterTool::handleMenu()
 
 	imguiSeparator();
 
+	char buff[1024];
 	if (m_toolMode == TOOLMODE_DEBUG_DRAW_PRIMITIVES)
 	{
 		if (m_navMesh && m_debugPolyRef)
@@ -260,14 +263,12 @@ void NavMeshNonpointTesterTool::handleMenu()
 				{
 					dtPolyVertex face(m_navMesh, m_debugPolyRef, (int)m_debugFaceIdx);
 
-					char buff[1024];
-
 					// 显示face的顶点索引
 					dtPolyVertex verts[3];
 					iterations::fromFaceToVertices iterFaceVerts(face);
 					auto num_verts = iterFaceVerts.allVertices(verts, 3);
 					dtAssert(num_verts == 3);
-					sprintf_s(buff, 1024, "face verts:[%d, %d, %d]", verts[0].innerIdx, verts[1].innerIdx, verts[2].innerIdx);
+					sprintf_s(buff, 1024, "face:%ld[%d] verts:[%d, %d, %d]", face.polyId, face.innerIdx, verts[0].innerIdx, verts[1].innerIdx, verts[2].innerIdx);
 					imguiValue(buff);
 
 					// 显示face的邻接face
@@ -306,6 +307,19 @@ void NavMeshNonpointTesterTool::handleMenu()
 				#endif	
 					);
 			}
+
+		#if DT_DEBUG_ASTAR
+			if (m_nVisitedFaces > 0)
+			{
+				const auto& face = m_visitedFaces[m_nVisitedFaces-1].face;
+				sprintf_s(
+					buff,
+					1024,
+					"last face:%ld[%d]",
+					face.polyId, face.innerIdx);
+				imguiValue(buff);
+			}
+		#endif
 		}
 		else
 		{
