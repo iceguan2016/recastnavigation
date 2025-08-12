@@ -414,8 +414,9 @@ namespace astar
 			vB.toString().c_str(),
 			vC.toString().c_str());
 #endif
-
-		float diameterSquared = radius * radius;
+		// Note: Diameter-based judgment is applied here.
+		float diameter = radius * 2;
+		float diameterSquared = diameter * diameter;
 
 		float dot;
 		//bool result;
@@ -491,6 +492,9 @@ namespace astar
 				float v[3];
 				dtVsub(v, proj, c);
 				distSquared = dtVlenSqr(v);
+#if DT_DEBUG_ASTAR
+				LOG_INFO("\t isWalkableByRadius, isBoundary:1, distSquared:%.2f diameterSquared:%.2f", distSquared, diameterSquared);
+#endif
 				return distSquared >= diameterSquared;
 			}
 			else
