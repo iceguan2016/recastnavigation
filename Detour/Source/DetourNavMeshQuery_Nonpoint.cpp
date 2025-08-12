@@ -435,6 +435,9 @@ namespace astar
 		{
 			// we compare length of AC with radius
 			distSquared = dtVlenSqr(ac);
+#if DT_DEBUG_ASTAR
+			LOG_INFO("\t isWalkableByRadius, CAB is obutse, distSquared:%.2f, diameterSquared:%.2f", distSquared, diameterSquared);
+#endif
 			return distSquared >= diameterSquared;
 		}
 
@@ -447,6 +450,9 @@ namespace astar
 		{
 			// we compare length of BC with radius
 			distSquared = dtVlenSqr(bc);
+#if DT_DEBUG_ASTAR
+			LOG_INFO("\t isWalkableByRadius, CBA is obutse, distSquared:%.2f, diameterSquared:%.2f", distSquared, diameterSquared);
+#endif
 			return distSquared >= diameterSquared;
 		}
 
@@ -454,7 +460,6 @@ namespace astar
 		dtPolyEdge faceEdge = queriers::faceEdge(throughFace);
 		if (!faceEdge) return false;
 		dtPolyEdge oppositeEdge = queriers::edgeOppositeEdge(faceEdge);
-		if (!oppositeEdge) return false;
 		dtPolyEdge nextLeftEdge = queriers::edgeNextLeftEdge(faceEdge);
 		if (!nextLeftEdge) return false;
 		dtPolyEdge nextLeftEdge_Opp = queriers::edgeOppositeEdge(nextLeftEdge);
@@ -474,7 +479,7 @@ namespace astar
 		}
 
 #if DT_DEBUG_ASTAR
-		LOG_INFO("\t isWalkableByRadius, adjEdge:%s, isBoundary:%d", adjEdge.toString().c_str(), queriers::edgeIsBoundary(adjEdge));
+		LOG_INFO("\t isWalkableByRadius, adjEdge:%s, isBoundary:%d", adjEdge.toString().c_str(), queriers::edgeIsBoundary(adjEdge)); 
 #endif
 
 		// if the adjacent edge is constrained, we check the distance of orthognaly projected

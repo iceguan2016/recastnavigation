@@ -54,8 +54,8 @@ class NavMeshNonpointTesterTool : public SampleTool
 	float		m_debugEdgeIdx;
 	float		m_debugFaceIdx;
 
-	dtPolyFace	m_faces[MAX_POLYS];
-	int			m_nFaces;
+	dtPolyFace	m_pathFaces[MAX_POLYS];
+	int			m_nPathFaces;
 
 #if DT_DEBUG_ASTAR
 	astar::dtAstarNodeDebug m_visitedFaces[MAX_VISIT_FACES];

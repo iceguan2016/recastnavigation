@@ -39,6 +39,8 @@ static float debugYOffset = 0.0f;
 static bool  debugDrawNeiFaces = false;
 static float debugFindPathRadius = 0.5f;
 static float debugFindPathIters = 100;
+static bool  debugDrawAstarVisitedFaces = false;
+static bool  debugDrawAstarPathFaces = true;
 
 void duDebugDrawPoint(duDebugDraw* dd, const float p[3], unsigned int col, const float size /*= 3.0f*/)
 {
@@ -125,7 +127,7 @@ NavMeshNonpointTesterTool::NavMeshNonpointTesterTool() :
 	m_debugVertexIdx(0),
 	m_debugEdgeIdx(0),
 	m_debugFaceIdx(0),
-	m_nFaces(0)
+	m_nPathFaces(0)
 #if DT_DEBUG_ASTAR
 	,
 	m_nVisitedFaces(0)
@@ -296,9 +298,9 @@ void NavMeshNonpointTesterTool::handleMenu()
 			if (imguiButton("Find path"))
 			{
 				const float agentRadius = m_sample->getAgentRadius();
-				float radius = dtMax(debugFindPathRadius - agentRadius, 0.1f);
+				float radius = debugFindPathRadius; //dtMax(debugFindPathRadius - agentRadius, 0.1f);
 				m_navQuery->findPathByRadius(m_startRef, m_endRef, m_spos, m_epos, &m_filter, 
-					m_faces, &m_nFaces, MAX_POLYS,
+					m_pathFaces, &m_nPathFaces, MAX_POLYS,
 					radius
 				#if DT_DEBUG_ASTAR
 					,
@@ -320,6 +322,15 @@ void NavMeshNonpointTesterTool::handleMenu()
 				imguiValue(buff);
 			}
 		#endif
+
+			if (imguiCheck("Draw astar visited faces", debugDrawAstarVisitedFaces))
+			{
+				debugDrawAstarVisitedFaces = !debugDrawAstarVisitedFaces;
+			}
+			if (imguiCheck("Draw astar path faces", debugDrawAstarPathFaces))
+			{
+				debugDrawAstarPathFaces = !debugDrawAstarPathFaces;
+			}
 		}
 		else
 		{
@@ -480,12 +491,20 @@ void NavMeshNonpointTesterTool::handleRender()
 			duRGBA(0, 0, 255, 64), 
 		};
 
-		if (m_nVisitedFaces > 0)
+		if (debugDrawAstarVisitedFaces && m_nVisitedFaces > 0)
 		{
 			for (int i = 0; i < m_nVisitedFaces; ++i)
 			{
 				duDebugDrawPolyFace(&dd, m_visitedFaces[i].face, faceCols[i % 3]);
 				duDebugDrawPoint(&dd, m_visitedFaces[i].entry_pos, pointCol, 10.0f);
+			}
+		}
+
+		if (debugDrawAstarPathFaces && m_nPathFaces > 0)
+		{
+			for (int i = 0; i < m_nPathFaces; ++i)
+			{
+				duDebugDrawPolyFace(&dd, m_pathFaces[i], faceCols[i % 3]);
 			}
 		}
 #endif
