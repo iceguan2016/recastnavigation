@@ -96,6 +96,10 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 		return DT_SUCCESS;
 	}
 
+#if DT_DEBUG_ASTAR
+	LOG_INFO("### findPathByRadius, startFace:%s", startRef.toString().c_str());
+#endif
+
 	m_nodePool->clear();
 	m_openList->clear();
 
@@ -149,6 +153,10 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 			break;
 		}
 
+#if DT_DEBUG_ASTAR
+		LOG_INFO("findPathByRadius, bestFace:%ld[%d]", bestFace.polyId, bestFace.innerIdx);
+#endif
+
 		const dtMeshTile* bestTile = 0;
 		const dtPoly* bestPoly = 0;
 		bestFace.getTileAndPoly(&bestTile, &bestPoly);
@@ -196,6 +204,9 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 				&& radius > 0.0f
 				&& !astar::isWalkableByRadius(radius, entryEdge, bestFace, innerEdge))
 			{
+#if DT_DEBUG_ASTAR
+				LOG_INFO("\t not walkable");
+#endif
 				continue;
 			}
 
@@ -349,6 +360,12 @@ namespace astar
 
 	bool isWalkableByRadius(float radius, const dtPolyEdge& fromEdge, const dtPolyFace& throughFace, const dtPolyEdge& toEdge)
 	{
+#if DT_DEBUG_ASTAR
+		LOG_INFO("\t isWalkableByRadius, fromEdge:%s throughFace:%s, toEdge:%s", 
+			fromEdge.toString().c_str(), 
+			throughFace.toString().c_str(),
+			toEdge.toString().c_str());
+#endif
 		// we identify the points
 		dtPolyVertex fromEdgeOrigin, fromEdgeDestination;
 		if (!queriers::edgeOriginAndDestinationVertex(fromEdge, &fromEdgeOrigin, &fromEdgeDestination))
@@ -390,6 +407,13 @@ namespace astar
 			vB = toEdgeDestination;
 			vC = fromEdgeDestination;
 		}
+
+#if DT_DEBUG_ASTAR
+		LOG_INFO("\t isWalkableByRadius, vA:%s vB:%s, vC:%s",
+			vA.toString().c_str(),
+			vB.toString().c_str(),
+			vC.toString().c_str());
+#endif
 
 		float diameterSquared = radius * radius;
 
@@ -448,6 +472,10 @@ namespace astar
 		{
 			adjEdge = queriers::edgePrevLeftEdge(faceEdge);
 		}
+
+#if DT_DEBUG_ASTAR
+		LOG_INFO("\t isWalkableByRadius, adjEdge:%s, isBoundary:%d", adjEdge.toString().c_str(), queriers::edgeIsBoundary(adjEdge));
+#endif
 
 		// if the adjacent edge is constrained, we check the distance of orthognaly projected
 		if (queriers::edgeIsBoundary(adjEdge))

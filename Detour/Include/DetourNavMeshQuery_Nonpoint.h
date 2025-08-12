@@ -85,6 +85,13 @@ struct dtPolyPrimitive
 			innerIdx != inOther.innerIdx;
 	}
 
+	std::string toString() const
+	{
+		std::stringstream ss;
+		ss << polyId << "[" << innerIdx << "]";
+		return ss.str();
+	}
+
 	const dtNavMesh*	navmesh;
 	dtPolyRef			polyId;
 	dtPrimIndex		innerIdx;
@@ -871,8 +878,8 @@ namespace debug
 			char timeStr[20];
 			std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
 
-			char messge[1204];
-			vsprintf_s(messge, 1024, fmt, args...);
+			char message[1024];
+			sprintf_s(message, 1024, format, args...);
 
 			if (instance.fileStream.is_open()) {
 				instance.fileStream << timeStr << " " << message << "\n";
@@ -919,6 +926,10 @@ namespace debug
 
 			// 打开文件
 			instance.fileStream.open(filePath, std::ios::app);
+			if (!instance.fileStream.is_open())
+			{
+				int i = 0;
+			}
 		}
 
 		LogLevel		minLevel;
@@ -926,9 +937,9 @@ namespace debug
 		std::string		logDirectory;
 		std::ofstream	fileStream;
 	};
-
-#define LOG_INFO(format, ...)     dtLogger::Log(LogLevel::INFO,     __FILE__, __LINE__, format, ##__VA_ARGS__)
-#define LOG_WARNING(format, ...)  dtLogger::Log(LogLevel::WARNING,  __FILE__, __LINE__, format, ##__VA_ARGS__)
-#define LOG_CRITICAL(format, ...) dtLogger::Log(LogLevel::CRITICAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
 }
+
+#define LOG_INFO(format, ...)     debug::dtLogger::Log(debug::LogLevel::INFO,     __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_WARNING(format, ...)  debug::dtLogger::Log(debug::LogLevel::WARNING,  __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_CRITICAL(format, ...) debug::dtLogger::Log(debug::LogLevel::CRITICAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
 #endif // DETOURNAVMESHQUERY_NONPOINT_H
