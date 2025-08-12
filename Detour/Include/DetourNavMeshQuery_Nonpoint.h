@@ -917,7 +917,7 @@ namespace debug
 #endif
 
 			char dateStr[20];
-			std::strftime(dateStr, sizeof(dateStr), "%Y%m%d", &tm);
+			std::strftime(dateStr, sizeof(dateStr), "%Y.%m.%d-%H.%M.%S", &tm);
 
 			// 构造带时间戳的文件名
 			std::ostringstream filename;
