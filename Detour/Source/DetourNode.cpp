@@ -125,7 +125,7 @@ dtNode* dtNodePool::getNode(dtPolyRef id, unsigned char state, dtPrimIndex primI
 	dtNode* node = 0;
 	while (i != DT_NULL_IDX)
 	{
-		if (m_nodes[i].id == id && m_nodes[i].state == state)
+		if (m_nodes[i].id == id && m_nodes[i].state == state && m_nodes[i].primIdx == primIdx)
 			return &m_nodes[i];
 		i = m_next[i];
 	}
