@@ -294,9 +294,11 @@ void NavMeshNonpointTesterTool::handleMenu()
 
 			if (imguiButton("Find path"))
 			{
+				const float agentRadius = m_sample->getAgentRadius();
+				float radius = dtMax(debugFindPathRadius - agentRadius, 0.1f);
 				m_navQuery->findPathByRadius(m_startRef, m_endRef, m_spos, m_epos, &m_filter, 
 					m_faces, &m_nFaces, MAX_POLYS,
-					debugFindPathRadius
+					radius
 				#if DT_DEBUG_ASTAR
 					,
 					(int)debugFindPathIters,
@@ -403,9 +405,9 @@ void NavMeshNonpointTesterTool::handleRender()
 
 	dd.depthMask(false);
 	if (m_sposSet)
-		drawAgent(m_spos, agentRadius, agentHeight, agentClimb, startCol);
+		drawAgent(m_spos, debugFindPathRadius, agentHeight, agentClimb, startCol);
 	if (m_eposSet)
-		drawAgent(m_epos, agentRadius, agentHeight, agentClimb, endCol);
+		drawAgent(m_epos, debugFindPathRadius, agentHeight, agentClimb, endCol);
 	dd.depthMask(true);
 
 	if (!m_navMesh)
