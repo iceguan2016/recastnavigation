@@ -821,6 +821,39 @@ namespace geom
 		}
 		return false;
 	}
+
+	// 0 if the p on edge
+	// 1 if the p goes to the left
+	// -1 if the p goes to the right
+	static const int REL_SIDE_ON = 0;
+	static const int REL_SIDE_LEFT = 1;
+	static const int REL_SIDE_RIGHT = -1;
+	
+	inline static int relativeSide(const float* p, const float* a, const float* b)
+	{
+		float area = dtTriArea2D(p, a, b);
+		if (area >= 0.001f)
+			return REL_SIDE_LEFT;
+		else if (area <= -0.001f)
+			return REL_SIDE_RIGHT;
+		else
+			return REL_SIDE_ON;
+	}
+
+	inline static bool relativeSideToEdge(const float* p, const dtPolyEdge& edge, int* side)
+	{
+		dtPolyVertex v0, v1;
+		if (queriers::edgeOriginAndDestinationVertex(edge, &v0, &v1))
+		{
+			float a[3], b[3];
+			queriers::vertexPosition(v0, a);
+			queriers::vertexPosition(v1, b);
+
+			*side = relativeSide(p, a, b);
+			return true;
+		}
+		return false;
+	}
 }
 
 namespace astar
@@ -833,6 +866,28 @@ namespace astar
 
 	// 检查通过throughFace从fromEdge到toEdge，半径为radius的单位是否能够通过
 	bool isWalkableByRadius(float radius, const dtPolyEdge& fromEdge, const dtPolyFace& throughFace, const dtPolyEdge& toEdge);
+}
+
+namespace funnel
+{
+	struct dtFunnelDebug
+	{
+		dtPolyEdge portalEdge;
+		dtPolyVertex portalLeft;
+		dtPolyVertex portalRight;
+	};
+
+	dtStatus straightPathByRadius(const float* startPos, const float* endPos,
+		const dtPolyFace* path, const int pathSize,
+		const dtPolyEdge* portalEdges, const int portalEdgeCount,
+		float* straightPath, unsigned char* straightPathFlags, dtPolyFace* straightPathRefs, 
+		int* straightPathCount, const int maxStraightPath, 
+		const float radius
+	#if DT_DEBUG_ASTAR
+		,
+		dtFunnelDebug* portalDebugs, int* portalDebugCount, const int maxPortalDebug
+	#endif
+		);
 }
 
 namespace debug

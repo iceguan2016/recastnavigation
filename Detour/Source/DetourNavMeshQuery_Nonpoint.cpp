@@ -4,6 +4,7 @@
 
 #include <list>
 #include <unordered_set>
+#include <unordered_map>
 
 static const float H_SCALE = 0.999f; // Search heuristic scale.
 
@@ -52,6 +53,7 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 	const float* startPos, const float* endPos,
 	const dtQueryFilter* filter,
 	dtPolyFace* path, int* pathCount, const int maxPath,
+	dtPolyEdge* portalEdges, int* portalEdgeCount, const int maxPortalEdge,
 	const float radius
 #if DT_DEBUG_ASTAR
 	,
@@ -69,7 +71,7 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 	dtAssert(m_nodePool);
 	dtAssert(m_openList);
 
-	if (!pathCount)
+	if (!pathCount || !portalEdgeCount)
 		return DT_FAILURE | DT_INVALID_PARAM;
 
 	*pathCount = 0;
@@ -84,7 +86,7 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 		startRef.navmesh != m_nav || endRef.navmesh != m_nav ||
 		!startPos || !dtVisfinite(startPos) ||
 		!endPos || !dtVisfinite(endPos) ||
-		!filter || !path || maxPath <= 0)
+		!filter || !path || maxPath <= 0 || !portalEdges || maxPortalEdge <= 0)
 	{
 		return DT_FAILURE | DT_INVALID_PARAM;
 	}
@@ -297,7 +299,7 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 		} while(true);
 	}
 
-	dtStatus status = getPathToNode(lastBestNode, path, pathCount, maxPath);
+	dtStatus status = getPathToNode(lastBestNode, path, pathCount, maxPath, portalEdges, portalEdgeCount, maxPortalEdge);
 
 	if (lastBestNode->id != endRef.polyId &&
 		lastBestNode->primIdx != endRef.innerIdx)
@@ -309,7 +311,10 @@ dtStatus dtNavMeshQuery::findPathByRadius(const dtPolyFace& startRef, const dtPo
 	return status;
 }
 
-dtStatus dtNavMeshQuery::getPathToNode(dtNode* endNode, dtPolyFace* path, int* pathCount, int maxPath) const
+dtStatus dtNavMeshQuery::getPathToNode(
+	dtNode* endNode, 
+	dtPolyFace* path, int* pathCount, int maxPath,
+	dtPolyEdge* portalEdges, int* portalEdgeCount, const int maxPortalEdge) const
 {
 	// Find the length of the entire path.
 	dtNode* curNode = endNode;
@@ -336,6 +341,8 @@ dtStatus dtNavMeshQuery::getPathToNode(dtNode* endNode, dtPolyFace* path, int* p
 		dtAssert(curNode);
 
 		path[i] = dtPolyFace(m_nav, curNode->id, curNode->primIdx);
+		if (i != 0)
+			portalEdges[i-1] = curNode->entryEdge;
 		curNode = m_nodePool->getNodeAtIdx(curNode->pidx);
 	}
 
@@ -349,15 +356,15 @@ dtStatus dtNavMeshQuery::getPathToNode(dtNode* endNode, dtPolyFace* path, int* p
 	return DT_SUCCESS;
 }
 
+struct dtPolyPrimitiveHash
+{
+	std::size_t operator()(const dtPolyPrimitive& p) const {
+		return std::hash<dtPolyRef>()(p.polyId) ^ (std::hash<int>()(p.innerIdx) << 1);
+	}
+};
+
 namespace astar
 {
-	struct dtInternalPrimitiveHash
-	{
-		std::size_t operator()(const dtPolyPrimitive& p) const {
-			return std::hash<dtPolyRef>()(p.polyId) ^ (std::hash<int>()(p.innerIdx) << 1);
-		}
-	};
-
 	bool isWalkableByRadius(float radius, const dtPolyEdge& fromEdge, const dtPolyFace& throughFace, const dtPolyEdge& toEdge)
 	{
 #if DT_DEBUG_ASTAR
@@ -517,7 +524,7 @@ namespace astar
 				std::list<dtPolyFace> faceToCheck;
 				std::list<dtPolyEdge> faceFromEdge;
 
-				std::unordered_set<dtPolyFace, dtInternalPrimitiveHash> faceDone;
+				std::unordered_set<dtPolyFace, dtPolyPrimitiveHash> faceDone;
 
 				faceFromEdge.push_back(adjEdge);
 				auto leftFace = queriers::edgeLeftFace(adjEdge);
@@ -631,5 +638,292 @@ namespace astar
 		}
 
 		return true;
+	}
+}
+
+namespace funnel
+{
+	dtStatus appendVertex(const float* pos, const unsigned char flags, const dtPolyFace ref,
+		float* straightPath, unsigned char* straightPathFlags, dtPolyFace* straightPathRefs,
+		int* straightPathCount, const int maxStraightPath)
+	{
+		if ((*straightPathCount) > 0 && dtVequal(&straightPath[((*straightPathCount) - 1) * 3], pos))
+		{
+			// The vertices are equal, update flags and poly.
+			if (straightPathFlags)
+				straightPathFlags[(*straightPathCount) - 1] = flags;
+			if (straightPathRefs)
+				straightPathRefs[(*straightPathCount) - 1] = ref;
+		}
+		else
+		{
+			// Append new vertex.
+			dtVcopy(&straightPath[(*straightPathCount) * 3], pos);
+			if (straightPathFlags)
+				straightPathFlags[(*straightPathCount)] = flags;
+			if (straightPathRefs)
+				straightPathRefs[(*straightPathCount)] = ref;
+			(*straightPathCount)++;
+
+			// If there is no space to append more vertices, return.
+			if ((*straightPathCount) >= maxStraightPath)
+			{
+				return DT_SUCCESS | DT_BUFFER_TOO_SMALL;
+			}
+
+			// If reached end of path, return.
+			if (flags == DT_STRAIGHTPATH_END)
+			{
+				return DT_SUCCESS;
+			}
+		}
+		return DT_IN_PROGRESS;
+	}
+
+	dtStatus straightPathByRadius(const float* startPos, const float* endPos,
+		const dtPolyFace* path, const int pathSize, 
+		const dtPolyEdge* portalEdges, const int portalEdgeCount,
+		float* straightPath, unsigned char* straightPathFlags, dtPolyFace* straightPathRefs, 
+		int* straightPathCount, const int maxStraightPath, 
+		const float radius
+#if DT_DEBUG_ASTAR
+		,
+		dtFunnelDebug* portalDebugs, int* portalDebugCount, const int maxPortalDebug
+#endif
+		)
+	{
+		if (!straightPathCount)
+			return DT_FAILURE | DT_INVALID_PARAM;
+
+		*straightPathCount = 0;
+
+		if (!startPos || !dtVisfinite(startPos) ||
+			!endPos || !dtVisfinite(endPos) ||
+			!path || pathSize <= 0 || !path[0] ||
+			!portalEdges || portalEdgeCount <= 0 ||
+			maxStraightPath <= 0)
+		{
+			return DT_FAILURE | DT_INVALID_PARAM;
+		}
+
+		dtStatus stat = 0;
+
+		// Add start point.
+		stat = appendVertex(startPos, DT_STRAIGHTPATH_START, path[0],
+			straightPath, straightPathFlags, straightPathRefs,
+			straightPathCount, maxStraightPath);
+		if (stat != DT_IN_PROGRESS)
+			return stat;
+
+		if (portalEdgeCount > 1)
+		{
+			float portalApex[3], portalLeft[3], portalRight[3];
+			dtVcopy(portalApex, startPos);
+			dtVcopy(portalLeft, portalApex);
+			dtVcopy(portalRight, portalApex);
+			int apexIndex = 0;
+			int leftIndex = 0;
+			int rightIndex = 0;
+
+			unsigned char leftPolyType = 0;
+			unsigned char rightPolyType = 0;
+
+			auto leftPolyFace = path[0];
+			auto rightPolyFace = path[0];
+
+			std::unordered_map<dtPolyVertex, int, dtPolyPrimitiveHash> vertexSideCache;
+
+			dtPolyVertex fromVertex;
+			dtPolyVertex fromFromVertex;
+			dtPolyVertex currVertex;
+			for (int i = 0; i < portalEdgeCount; ++i)
+			{
+				// we identify the current vertex and his origin vertex
+				auto currEdge = &portalEdges[i];
+
+				int direction = 0;
+				dtPolyVertex origin, destination;
+				if (!queriers::edgeOriginAndDestinationVertex(*currEdge, &origin, &destination))
+				{
+					return DT_FAILURE;
+				}
+
+				if (i == 0)
+				{
+					float a[3], b[3];
+					queriers::vertexPosition(origin, a);
+					queriers::vertexPosition(destination, b);
+
+					auto side = geom::relativeSide(startPos, a, b);
+					if (side == geom::REL_SIDE_LEFT)
+					{
+						vertexSideCache[destination] = geom::REL_SIDE_LEFT;
+						vertexSideCache[origin] = geom::REL_SIDE_RIGHT;
+					}
+					else
+					{
+						vertexSideCache[destination] = geom::REL_SIDE_RIGHT;
+						vertexSideCache[origin] = geom::REL_SIDE_LEFT;
+					}
+
+					direction = -side;
+					fromVertex = origin;
+					fromFromVertex = destination;
+				}
+				else
+				{
+					if (origin == fromVertex)
+					{
+						currVertex = destination;
+					}
+					else if (destination == fromVertex)
+					{
+						currVertex = origin;
+					}
+					else if (origin == fromFromVertex)
+					{
+						currVertex = destination;
+						fromVertex = fromFromVertex;
+					}
+					else if (destination == fromFromVertex)
+					{
+						currVertex = origin;
+						fromVertex = fromFromVertex;
+					}
+					else
+					{
+						dtAssert(false && "IMPOSSIBLE TO IDENTIFY THE VERTEX !!!");
+					}
+
+					auto find_iter = vertexSideCache.find(fromVertex);
+					dtAssert(find_iter != vertexSideCache.end() && "straightPathByRadius, find fromVertex failed!!!");
+					direction = -(*find_iter).second;
+
+					fromFromVertex = fromVertex;
+					fromVertex = currVertex;
+				}
+
+			#if DT_DEBUG_ASTAR
+				if (*portalDebugCount < maxPortalDebug)
+				{
+					auto portalDebug = &portalDebugs[portalEdgeCount];
+					portalDebug->portalEdge = *currEdge;
+					if (direction == geom::REL_SIDE_RIGHT)
+					{
+						portalDebug->portalRight = fromVertex;
+						portalDebug->portalLeft = fromFromVertex;
+					}
+					else
+					{
+						portalDebug->portalRight = fromFromVertex;
+						portalDebug->portalLeft = fromVertex;
+					}
+
+					(*portalDebugCount)++;
+				}
+			#endif
+
+				float left[3], right[3];
+				if (direction == geom::REL_SIDE_RIGHT)
+				{
+					// fromVertex on right
+					queriers::vertexPosition(fromVertex, right);
+					queriers::vertexPosition(fromFromVertex, left);
+				}
+				else
+				{
+					// fromVertex on left
+					queriers::vertexPosition(fromFromVertex, right);
+					queriers::vertexPosition(fromVertex, left);
+				}
+
+				// Right vertex.
+				if (dtTriArea2D(portalApex, portalRight, right) <= 0.0f)
+				{
+					if (dtVequal(portalApex, portalRight) || dtTriArea2D(portalApex, portalLeft, right) > 0.0f)
+					{
+						dtVcopy(portalRight, right);
+						rightPolyFace = (i + 1 < pathSize) ? path[i + 1] : dtPolyFace::INVALID;
+						rightIndex = i;
+					}
+					else
+					{
+						dtVcopy(portalApex, portalLeft);
+						apexIndex = leftIndex;
+
+						unsigned char flags = 0;
+						if (!leftPolyFace)
+							flags = DT_STRAIGHTPATH_END;
+						else if (leftPolyType == DT_POLYTYPE_OFFMESH_CONNECTION)
+							flags = DT_STRAIGHTPATH_OFFMESH_CONNECTION;
+						dtPolyFace ref = leftPolyFace;
+
+						// Append or update vertex
+						stat = appendVertex(portalApex, flags, ref,
+							straightPath, straightPathFlags, straightPathRefs,
+							straightPathCount, maxStraightPath);
+						if (stat != DT_IN_PROGRESS)
+							return stat;
+
+						dtVcopy(portalLeft, portalApex);
+						dtVcopy(portalRight, portalApex);
+						leftIndex = apexIndex;
+						rightIndex = apexIndex;
+
+						// Restart
+						i = apexIndex;
+
+						continue;
+					}
+				}
+
+				// Left vertex.
+				if (dtTriArea2D(portalApex, portalLeft, left) >= 0.0f)
+				{
+					if (dtVequal(portalApex, portalLeft) || dtTriArea2D(portalApex, portalRight, left) < 0.0f)
+					{
+						dtVcopy(portalLeft, left);
+						leftPolyFace = (i + 1 < pathSize) ? path[i + 1] : dtPolyFace::INVALID;
+						leftIndex = i;
+					}
+					else
+					{
+						dtVcopy(portalApex, portalRight);
+						apexIndex = rightIndex;
+
+						unsigned char flags = 0;
+						if (!rightPolyFace)
+							flags = DT_STRAIGHTPATH_END;
+						else if (rightPolyType == DT_POLYTYPE_OFFMESH_CONNECTION)
+							flags = DT_STRAIGHTPATH_OFFMESH_CONNECTION;
+						dtPolyFace ref = rightPolyFace;
+
+						// Append or update vertex
+						stat = appendVertex(portalApex, flags, ref,
+							straightPath, straightPathFlags, straightPathRefs,
+							straightPathCount, maxStraightPath);
+						if (stat != DT_IN_PROGRESS)
+							return stat;
+
+						dtVcopy(portalLeft, portalApex);
+						dtVcopy(portalRight, portalApex);
+						leftIndex = apexIndex;
+						rightIndex = apexIndex;
+
+						// Restart
+						i = apexIndex;
+
+						continue;
+					}
+				}
+			}
+		}
+
+		// Ignore status return value as we're just about to return anyway.
+		appendVertex(endPos, DT_STRAIGHTPATH_END, dtPolyFace::INVALID,
+			straightPath, straightPathFlags, straightPathRefs,
+			straightPathCount, maxStraightPath);
+
+		return DT_SUCCESS | ((*straightPathCount >= maxStraightPath) ? DT_BUFFER_TOO_SMALL : 0);
 	}
 }

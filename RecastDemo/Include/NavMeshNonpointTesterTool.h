@@ -56,10 +56,17 @@ class NavMeshNonpointTesterTool : public SampleTool
 
 	dtPolyFace	m_pathFaces[MAX_POLYS];
 	int			m_nPathFaces;
+	dtPolyEdge	m_pathEdges[MAX_POLYS];
+	int			m_nPathEdges;
+
+	float		m_straightPath[MAX_POLYS*3];
+	int			m_nStraightPath;
 
 #if DT_DEBUG_ASTAR
 	astar::dtAstarNodeDebug m_visitedFaces[MAX_VISIT_FACES];
 	int			m_nVisitedFaces;
+	funnel::dtFunnelDebug m_portalDebugs[MAX_POLYS];
+	int			m_portalDebugCount;
 #endif
 
 public:

@@ -529,6 +529,7 @@ public:
 		const float* startPos, const float* endPos,
 		const dtQueryFilter* filter,
 		dtPolyFace* path, int* pathCount, const int maxPath,
+		dtPolyEdge* portalEdges, int* portalEdgeCount, const int maxPortalEdge,
 		const float radius
 	#if DT_DEBUG_ASTAR
 		,
@@ -537,7 +538,10 @@ public:
 	#endif
 		) const;
 
-	dtStatus dtNavMeshQuery::getPathToNode(struct dtNode* endNode, dtPolyFace* path, int* pathCount, int maxPath) const;
+	dtStatus dtNavMeshQuery::getPathToNode(
+		struct dtNode* endNode, 
+		dtPolyFace* path, int* pathCount, int maxPath,
+		dtPolyEdge* portalEdges, int* portalEdgeCount, const int maxPortalEdge) const;
 	/// @}
 	
 private:

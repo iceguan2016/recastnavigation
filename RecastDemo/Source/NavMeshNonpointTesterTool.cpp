@@ -127,7 +127,8 @@ NavMeshNonpointTesterTool::NavMeshNonpointTesterTool() :
 	m_debugVertexIdx(0),
 	m_debugEdgeIdx(0),
 	m_debugFaceIdx(0),
-	m_nPathFaces(0)
+	m_nPathFaces(0),
+	m_nPathEdges(0)
 #if DT_DEBUG_ASTAR
 	,
 	m_nVisitedFaces(0)
@@ -299,8 +300,9 @@ void NavMeshNonpointTesterTool::handleMenu()
 			{
 				const float agentRadius = m_sample->getAgentRadius();
 				float radius = debugFindPathRadius; //dtMax(debugFindPathRadius - agentRadius, 0.1f);
-				m_navQuery->findPathByRadius(m_startRef, m_endRef, m_spos, m_epos, &m_filter, 
+				auto stat = m_navQuery->findPathByRadius(m_startRef, m_endRef, m_spos, m_epos, &m_filter, 
 					m_pathFaces, &m_nPathFaces, MAX_POLYS,
+					m_pathEdges, &m_nPathEdges, MAX_POLYS,
 					radius
 				#if DT_DEBUG_ASTAR
 					,
@@ -308,6 +310,19 @@ void NavMeshNonpointTesterTool::handleMenu()
 					m_visitedFaces, m_nVisitedFaces, MAX_VISIT_FACES
 				#endif	
 					);
+
+				if (dtStatusSucceed(stat))
+				{
+					funnel::straightPathByRadius(m_spos, m_epos,
+						m_pathFaces, m_nPathFaces, m_pathEdges, m_nPathEdges,
+						m_straightPath, 0, 0, &m_nStraightPath, MAX_POLYS,
+						radius
+					#if DT_DEBUG_ASTAR
+						,
+						m_portalDebugs, &m_portalDebugCount, MAX_POLYS
+					#endif
+						);
+				}
 			}
 
 		#if DT_DEBUG_ASTAR
@@ -424,6 +439,10 @@ void NavMeshNonpointTesterTool::handleRender()
 	static const unsigned int faceCol = duRGBA(128, 128, 0, 64);
 	static const unsigned int neiFaceCol = duRGBA(0, 128, 128, 64);
 
+	static const unsigned int redCol = duRGBA(255, 0, 0, 255);
+	static const unsigned int greenCol = duRGBA(0, 255, 0, 255);
+	static const unsigned int blueCol = duRGBA(0, 0, 255, 255);
+
 	const float agentRadius = m_sample->getAgentRadius();
 	const float agentHeight = m_sample->getAgentHeight();
 	const float agentClimb = m_sample->getAgentClimb();
@@ -505,6 +524,21 @@ void NavMeshNonpointTesterTool::handleRender()
 			for (int i = 0; i < m_nPathFaces; ++i)
 			{
 				duDebugDrawPolyFace(&dd, m_pathFaces[i], faceCols[i % 3]);
+			}
+		}
+
+		if (m_portalDebugCount > 0)
+		{
+			for (int i = 0; i < m_portalDebugCount; ++i)
+			{
+				const auto& d = m_portalDebugs[i];
+				duDebugDrawPolyEdge(&dd, d.portalEdge, redCol, 5.0f);
+
+				float left[3], right[3];
+				queriers::vertexPosition(d.portalLeft, left);
+				queriers::vertexPosition(d.portalRight, right);
+				duDebugDrawPoint(&dd, left, greenCol, 10.0f);
+				duDebugDrawPoint(&dd, right, blueCol, 10.0f);
 			}
 		}
 #endif
