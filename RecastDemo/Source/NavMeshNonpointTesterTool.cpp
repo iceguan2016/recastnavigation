@@ -41,6 +41,10 @@ static float debugFindPathRadius = 0.5f;
 static float debugFindPathIters = 100;
 static bool  debugDrawAstarVisitedFaces = false;
 static bool  debugDrawAstarPathFaces = true;
+static bool  debugDrawFunnelPathEdges = false;
+static bool  debugDrawFunnelPortalDebug = true;
+static float debugDrawFunnelPortalDebugIndex = 0;
+static bool  debugDrawFunnelStraightPath = true;
 
 void duDebugDrawPoint(duDebugDraw* dd, const float p[3], unsigned int col, const float size /*= 3.0f*/)
 {
@@ -49,6 +53,22 @@ void duDebugDrawPoint(duDebugDraw* dd, const float p[3], unsigned int col, const
 	dd->begin(DU_DRAW_POINTS, size);
 	float v[3];
 	dtVcopy(v, p);
+	v[1] += debugYOffset;
+	dd->vertex(v, col);
+	dd->end();
+}
+
+void duDebugDrawLine(duDebugDraw* dd, const float p0[3], const float p1[3], unsigned int col, const float size /*= 3.0f*/)
+{
+	if (dd == nullptr) return;
+
+	dd->begin(DU_DRAW_LINES, size);
+	float v[3];
+	dtVcopy(v, p0);
+	v[1] += debugYOffset;
+	dd->vertex(v, col);
+
+	dtVcopy(v, p1);
 	v[1] += debugYOffset;
 	dd->vertex(v, col);
 	dd->end();
@@ -296,10 +316,11 @@ void NavMeshNonpointTesterTool::handleMenu()
 			imguiSlider("Debug Find Path Radius", &debugFindPathRadius, 0.1f, 3.0f, 0.1f);
 			imguiSlider("Debug Find Path Iters", &debugFindPathIters, 0.0f, 100.0f, 1.0f);
 
+			const float agentRadius = m_sample->getAgentRadius();
+			float radius = debugFindPathRadius; //dtMax(debugFindPathRadius - agentRadius, 0.1f);
+
 			if (imguiButton("Find path"))
 			{
-				const float agentRadius = m_sample->getAgentRadius();
-				float radius = debugFindPathRadius; //dtMax(debugFindPathRadius - agentRadius, 0.1f);
 				auto stat = m_navQuery->findPathByRadius(m_startRef, m_endRef, m_spos, m_epos, &m_filter, 
 					m_pathFaces, &m_nPathFaces, MAX_POLYS,
 					m_pathEdges, &m_nPathEdges, MAX_POLYS,
@@ -310,19 +331,19 @@ void NavMeshNonpointTesterTool::handleMenu()
 					m_visitedFaces, m_nVisitedFaces, MAX_VISIT_FACES
 				#endif	
 					);
+			}
 
-				if (dtStatusSucceed(stat))
-				{
-					funnel::straightPathByRadius(m_spos, m_epos,
-						m_pathFaces, m_nPathFaces, m_pathEdges, m_nPathEdges,
-						m_straightPath, 0, 0, &m_nStraightPath, MAX_POLYS,
-						radius
-					#if DT_DEBUG_ASTAR
-						,
-						m_portalDebugs, &m_portalDebugCount, MAX_POLYS
-					#endif
-						);
-				}
+			if (imguiButton("Find straight path"))
+			{
+				funnel::straightPathByRadius(m_spos, m_epos,
+					m_pathFaces, m_nPathFaces, m_pathEdges, m_nPathEdges,
+					m_straightPath, 0, 0, &m_nStraightPath, MAX_POLYS,
+					radius
+#if DT_DEBUG_ASTAR
+					,
+					m_portalDebugs, &m_portalDebugCount, MAX_POLYS
+#endif
+				);
 			}
 
 		#if DT_DEBUG_ASTAR
@@ -336,6 +357,11 @@ void NavMeshNonpointTesterTool::handleMenu()
 					face.polyId, face.innerIdx);
 				imguiValue(buff);
 			}
+
+			if (m_portalDebugCount > 0)
+			{
+				imguiSlider("funnel portal debug index", &debugDrawFunnelPortalDebugIndex, 0.0f, (float)(m_portalDebugCount - 1), 1.0f);
+			}
 		#endif
 
 			if (imguiCheck("Draw astar visited faces", debugDrawAstarVisitedFaces))
@@ -346,6 +372,19 @@ void NavMeshNonpointTesterTool::handleMenu()
 			{
 				debugDrawAstarPathFaces = !debugDrawAstarPathFaces;
 			}
+			if (imguiCheck("Draw funnel path edges", debugDrawFunnelPathEdges))
+			{
+				debugDrawFunnelPathEdges = !debugDrawFunnelPathEdges;
+			}
+			if (imguiCheck("Draw funnel portal debug", debugDrawFunnelPortalDebug))
+			{
+				debugDrawFunnelPortalDebug = !debugDrawFunnelPortalDebug;
+			}
+			if (imguiCheck("Draw funnel straight path", debugDrawFunnelStraightPath))
+			{
+				debugDrawFunnelStraightPath = !debugDrawFunnelStraightPath;
+			}
+				
 		}
 		else
 		{
@@ -442,6 +481,7 @@ void NavMeshNonpointTesterTool::handleRender()
 	static const unsigned int redCol = duRGBA(255, 0, 0, 255);
 	static const unsigned int greenCol = duRGBA(0, 255, 0, 255);
 	static const unsigned int blueCol = duRGBA(0, 0, 255, 255);
+	static const unsigned int yellowCol = duRGBA(255, 255, 0, 255);
 
 	const float agentRadius = m_sample->getAgentRadius();
 	const float agentHeight = m_sample->getAgentHeight();
@@ -519,6 +559,26 @@ void NavMeshNonpointTesterTool::handleRender()
 			}
 		}
 
+		if (debugDrawFunnelPortalDebug && m_portalDebugCount > 0)
+		{
+			int debugIndex = (int)dtClamp(debugDrawFunnelPortalDebugIndex, 0.0f, (float)(m_portalDebugCount-1));
+			for (int i = 0; i < m_portalDebugCount; ++i)
+			{
+				const auto& d = m_portalDebugs[i];
+				duDebugDrawPolyEdge(&dd, d.portalEdge, redCol, 5.0f);
+
+				if (i == debugIndex)
+				{
+					float left[3], right[3];
+					queriers::vertexPosition(d.portalLeft, left);
+					queriers::vertexPosition(d.portalRight, right);
+					duDebugDrawPoint(&dd, left, greenCol, 10.0f);
+					duDebugDrawPoint(&dd, right, blueCol, 10.0f);
+				}
+			}
+		}
+#endif
+
 		if (debugDrawAstarPathFaces && m_nPathFaces > 0)
 		{
 			for (int i = 0; i < m_nPathFaces; ++i)
@@ -527,21 +587,29 @@ void NavMeshNonpointTesterTool::handleRender()
 			}
 		}
 
-		if (m_portalDebugCount > 0)
+		if (debugDrawFunnelPathEdges && m_nPathEdges > 0)
 		{
-			for (int i = 0; i < m_portalDebugCount; ++i)
+			for (int i = 0; i < m_nPathEdges; ++i)
 			{
-				const auto& d = m_portalDebugs[i];
-				duDebugDrawPolyEdge(&dd, d.portalEdge, redCol, 5.0f);
-
-				float left[3], right[3];
-				queriers::vertexPosition(d.portalLeft, left);
-				queriers::vertexPosition(d.portalRight, right);
-				duDebugDrawPoint(&dd, left, greenCol, 10.0f);
-				duDebugDrawPoint(&dd, right, blueCol, 10.0f);
+				const auto& e = m_pathEdges[i];
+				duDebugDrawPolyEdge(&dd, e, redCol, 5.0f);
 			}
 		}
-#endif
+
+		if (debugDrawFunnelStraightPath && m_nStraightPath > 0)
+		{
+			for (int i = 0; i < m_nStraightPath; ++i)
+			{
+				const float* p = &m_straightPath[i*3];
+				//duDebugDrawPoint(&dd, p, redCol, 3.0f);
+
+				if ((i+1) < m_nStraightPath)
+				{
+					const float* np = &m_straightPath[(i+1)*3];
+					duDebugDrawLine(&dd, p, np, yellowCol, 3.0f);
+				}
+			}
+		}
 	}
 }
 
