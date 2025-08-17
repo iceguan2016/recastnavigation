@@ -876,7 +876,7 @@ namespace funnel
 			++pointCount;
 
 			int iterCount = 0;
-			static const int MAX_ITER_COUNT = 100;
+			static const int MAX_ITER_COUNT = 500;
 			for (int i = 0; i < pointCount; ++i)
 			{
 				++iterCount;
