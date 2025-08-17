@@ -854,6 +854,12 @@ namespace geom
 		}
 		return false;
 	}
+
+	/** Returns if \a p lies on the left side of the line \a a - \a b. Uses XZ space. Also returns true if the points are colinear */
+	inline static bool left(const float* a, const float* b, const float* p) 
+	{
+		return (b[0] - a[0]) * (p[2] - a[2]) - (p[0] - a[0]) * (b[2] - a[2]) <= 0;
+	}
 }
 
 namespace astar
@@ -898,6 +904,109 @@ namespace funnel
 		dtFunnelStep* funnelSteps, int* funnelStepCount, const int maxFunnelStep
 	#endif
 		);
+
+	class dtRadiusModifier
+	{
+	public:
+		dtRadiusModifier(float radius = 0.5f, float detail = 10.0f)
+			: _radius(radius), _detail(detail)
+		{
+		}
+
+		void ApplyModify(
+			const float* straightPath, const int straightPathCount,
+			float* mdifiedStraightPath, int* mdifiedStraightPathCount, const int maxMdifiedStraightPath);
+
+	private:
+		/** Calculates inner tangents for a pair of circles.
+		 * \param p1 Position of first circle
+		 * \param p2 Position of the second circle
+		 * \param r1 Radius of the first circle
+		 * \param r2 Radius of the second circle
+		 * \param a Angle from the line joining the centers of the circles to the inner tangents.
+		 * \param sigma World angle from p1 to p2 (in XZ space)
+		 *
+		 * Add \a a to \a sigma to get the first tangent angle, subtract \a a from \a sigma to get the second tangent angle.
+		 *
+		 * \returns True on success. False when the circles are overlapping.
+		 */
+		bool CalculateCircleInner(const float *p1, const float* p2, float r1, float r2, float *a, float *sigma) 
+		{
+			float dist = dtVdist(p1, p2);
+			if (r1 + r2 > dist) {
+				a = 0;
+				sigma = 0;
+				return false;
+			}
+
+			*a = (float)dtMathACosf((r1 + r2) / dist);
+			*sigma = (float)dtMathAtan2f(p2[2] - p1[2], p2[0] - p1[0]);
+			return true;
+		}
+
+		/** Calculates outer tangents for a pair of circles.
+		 * \param p1 Position of first circle
+		 * \param p2 Position of the second circle
+		 * \param r1 Radius of the first circle
+		 * \param r2 Radius of the second circle
+		 * \param a Angle from the line joining the centers of the circles to the inner tangents.
+		 * \param sigma World angle from p1 to p2 (in XZ space)
+		 *
+		 * Add \a a to \a sigma to get the first tangent angle, subtract \a a from \a sigma to get the second tangent angle.
+		 *
+		 * \returns True on success. False on failure (more specifically when |r1-r2| > |p1-p2| )
+		 */
+		bool CalculateCircleOuter(const float* p1, const float* p2, float r1, float r2, float *a, float *sigma) {
+			float dist = dtVdist(p1, p2);
+			if (dtAbs(r1 - r2) > dist) {
+				a = 0;
+				sigma = 0;
+				return false;
+			}
+			*a = (float)dtMathACosf((r1 - r2) / dist);
+			*sigma = (float)dtMathAtan2f(p2[2] - p1[2], p2[0] - p1[0]);
+			return true;
+		}
+
+		enum TangentType 
+		{
+			OuterRight = 1 << 0,
+			InnerRightLeft = 1 << 1,
+			InnerLeftRight = 1 << 2,
+			OuterLeft = 1 << 3,
+			Outer = OuterRight | OuterLeft,
+			Inner = InnerRightLeft | InnerLeftRight
+		};
+
+		TangentType CalculateTangentType(const float* p1, const float* p2, const float* p3, const float* p4)
+		{
+			bool l1 = geom::left(p1, p2, p3);
+			bool l2 = geom::left(p2, p3, p4);
+
+			return (TangentType)(1 << ((l1 ? 2 : 0) + (l2 ? 1 : 0)));
+		}
+
+		TangentType CalculateTangentTypeSimple(const float* p1, const float* p2, const float* p3)
+		{
+			bool l2 = geom::left(p1, p2, p3);
+			bool l1 = l2;
+
+			return (TangentType)(1 << ((l1 ? 2 : 0) + (l2 ? 1 : 0)));
+		}
+
+		/** Radius of the circle segments generated.
+		 * Usually similar to the character radius.
+		 */
+		float _radius;
+
+		/** Detail of generated circle segments.
+		 * Measured as steps per full circle.
+		 *
+		 * It is more performant to use a low value.
+		 * For movement, using a high value will barely improve path quality.
+		 */
+		float _detail;
+	};
 }
 
 namespace debug

@@ -992,4 +992,195 @@ namespace funnel
 
 		return DT_SUCCESS | ((*straightPathCount >= maxStraightPath) ? DT_BUFFER_TOO_SMALL : 0);
 	}
+
+	static const float PI = 3.14159265f;
+
+	// Radius modifier
+	void dtRadiusModifier::ApplyModify(
+		const float* straightPath, const int straightPathCount,
+		float* modifiedStraightPath, int* modifiedStraightPathCount, const int maxModifiedStraightPath)
+	{
+		if (!straightPath || straightPathCount < 3) return;
+		if (!modifiedStraightPath || maxModifiedStraightPath < straightPathCount) return;
+
+		/** \todo Do something about these allocations */
+		std::vector<float> radi, a1, a2;
+		std::vector<bool> dir;
+		radi.resize(straightPathCount);
+		a1.resize(straightPathCount);
+		a2.resize(straightPathCount);
+		dir.resize(straightPathCount);
+
+		for (int i = 0; i < radi.size(); i++)
+		{
+			radi[i] = _radius;
+		}
+
+		radi[0] = 0;
+		radi[radi.size() - 1] = 0;
+
+		int count = 0;
+		for (int i = 0; i < straightPathCount - 1; i++)
+		{
+			count++;
+			if (count > 2 * straightPathCount) {
+				// LOG_WARNING("Could not resolve radiuses, the path is too complex. Try reducing the base radius");
+				break;
+			}
+			
+			TangentType tt;
+
+			if (i == 0) 
+			{
+				tt = CalculateTangentTypeSimple(&straightPath[i*3], &straightPath[(i + 1)*3], &straightPath[(i + 2)*3]);
+			}
+			else if (i == straightPathCount - 2)
+			{
+				tt = CalculateTangentTypeSimple(&straightPath[(i - 1)*3], &straightPath[i*3], &straightPath[(i + 1)*3]);
+			}
+			else
+			{
+				tt = CalculateTangentType(&straightPath[(i - 1)*3], &straightPath[i*3], &straightPath[(i + 1)*3], &straightPath[(i + 2)*3]);
+			}
+
+			//DrawCircle (vs[i], radi[i], Color.yellow);
+
+			if ((tt & TangentType::Inner) != 0) 
+			{
+				//Angle to tangent
+				float a;
+				//Angle to other circle
+				float sigma;
+
+				//Calculate angles to the next circle and angles for the inner tangents
+				if (!CalculateCircleInner(&straightPath[i*3], &straightPath[(i + 1)*3], radi[i], radi[i + 1], &a, &sigma))
+				{
+					//Failed, try modifying radiuses
+					float magn = dtVdist(&straightPath[(i + 1)*3], &straightPath[i*3]);
+					radi[i] = magn * (radi[i] / (radi[i] + radi[i + 1]));
+					radi[i + 1] = magn - radi[i];
+					radi[i] *= 0.99f;
+					radi[i + 1] *= 0.99f;
+					i -= 2;
+					continue;
+				}
+
+				if (tt == TangentType::InnerRightLeft) 
+				{
+					a2[i] = sigma - a;
+					a1[i + 1] = sigma - a + PI;
+					dir[i] = true;
+				}
+				else 
+				{
+					a2[i] = sigma + a;
+					a1[i + 1] = sigma + a + PI;
+					dir[i] = false;
+				}
+			}
+			else 
+			{
+				float sigma;
+				float a;
+
+				//Calculate angles to the next circle and angles for the outer tangents
+				if (!CalculateCircleOuter(&straightPath[i*3], &straightPath[(i + 1)*3], radi[i], radi[i + 1], &a, &sigma))
+				{
+					//Failed, try modifying radiuses
+					if (i == straightPathCount - 2) {
+						//The last circle has a fixed radius at 0, don't modify it
+						radi[i] = dtVdist(&straightPath[(i + 1)*3], &straightPath[i*3]);
+						radi[i] *= 0.99f;
+						i -= 1;
+					}
+					else 
+					{
+						if (radi[i] > radi[i + 1]) 
+						{
+							radi[i + 1] = radi[i] - dtVdist(&straightPath[(i + 1)*3], &straightPath[i*3]);
+						}
+						else 
+						{
+							radi[i + 1] = radi[i] + dtVdist(&straightPath[(i + 1)*3], &straightPath[i*3]);
+						}
+						radi[i + 1] *= 0.99f;
+					}
+
+
+
+					i -= 1;
+					continue;
+				}
+
+				if (tt == TangentType::OuterRight) 
+				{
+					a2[i] = sigma - a;
+					a1[i + 1] = sigma - a;
+					dir[i] = true;
+				}
+				else 
+				{
+					a2[i] = sigma + a;
+					a1[i + 1] = sigma + a;
+					dir[i] = false;
+				}
+			}
+		}
+
+
+		// 
+		int newPathCount = 0;
+		dtVcopy(&modifiedStraightPath[newPathCount*3], &straightPath[0]);
+		++newPathCount;
+
+		if (_detail < 1) _detail = 1;
+		float step = (float)(2 * PI) / _detail;
+		for (int i = 1; i < straightPathCount - 1; i++)
+		{
+			float start = a1[i];
+			float end = a2[i];
+			float rad = radi[i];
+
+			if (dir[i]) 
+			{
+				if (end < start) end += (float)PI * 2;
+				for (float t = start; t < end; t += step) 
+				{
+					if (newPathCount < maxModifiedStraightPath)
+					{
+						float offset[3];
+						offset[0] = dtMathCosf(t);
+						offset[1] = 0.0f;
+						offset[2] = dtMathCosf(t);
+						
+						dtVmad(&modifiedStraightPath[newPathCount*3], &straightPath[i*3], offset, rad);
+						++newPathCount;
+					}
+				}
+			}
+			else 
+			{
+				if (start < end) start += (float)PI * 2;
+				for (float t = start; t > end; t -= step)
+				{
+					float offset[3];
+					offset[0] = dtMathCosf(t);
+					offset[1] = 0.0f;
+					offset[2] = dtMathCosf(t);
+
+					dtVmad(&modifiedStraightPath[newPathCount * 3], &straightPath[i * 3], offset, rad);
+					++newPathCount;
+				}
+			}
+		}
+
+		if (newPathCount < maxModifiedStraightPath)
+		{
+			dtVcopy(&modifiedStraightPath[newPathCount * 3], &straightPath[straightPathCount - 1]);
+			++newPathCount;
+		}
+
+		*modifiedStraightPathCount = newPathCount;
+	}
+
 }
