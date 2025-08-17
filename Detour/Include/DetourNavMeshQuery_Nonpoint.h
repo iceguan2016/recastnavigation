@@ -904,7 +904,12 @@ namespace funnel
 		dtFunnelStep* funnelSteps, int* funnelStepCount, const int maxFunnelStep
 	#endif
 		);
-
+	
+	struct dtRadiusModifierDebug
+	{
+		float pos[3];
+		float radius;
+	};
 	class dtRadiusModifier
 	{
 	public:
@@ -913,9 +918,14 @@ namespace funnel
 		{
 		}
 
-		void ApplyModify(
+		void applyModify(
 			const float* straightPath, const int straightPathCount,
-			float* mdifiedStraightPath, int* mdifiedStraightPathCount, const int maxMdifiedStraightPath);
+			float* mdifiedStraightPath, int* mdifiedStraightPathCount, const int maxMdifiedStraightPath
+		#if DT_DEBUG_ASTAR
+			,
+			dtRadiusModifierDebug* modifierDebug, int* modifierDebugCount, const int maxModifierDebug
+		#endif
+			);
 
 	private:
 		/** Calculates inner tangents for a pair of circles.
@@ -930,7 +940,7 @@ namespace funnel
 		 *
 		 * \returns True on success. False when the circles are overlapping.
 		 */
-		bool CalculateCircleInner(const float *p1, const float* p2, float r1, float r2, float *a, float *sigma) 
+		bool calculateCircleInner(const float *p1, const float* p2, float r1, float r2, float *a, float *sigma) 
 		{
 			float dist = dtVdist(p1, p2);
 			if (r1 + r2 > dist) {
@@ -956,7 +966,7 @@ namespace funnel
 		 *
 		 * \returns True on success. False on failure (more specifically when |r1-r2| > |p1-p2| )
 		 */
-		bool CalculateCircleOuter(const float* p1, const float* p2, float r1, float r2, float *a, float *sigma) {
+		bool calculateCircleOuter(const float* p1, const float* p2, float r1, float r2, float *a, float *sigma) {
 			float dist = dtVdist(p1, p2);
 			if (dtAbs(r1 - r2) > dist) {
 				a = 0;
@@ -978,7 +988,7 @@ namespace funnel
 			Inner = InnerRightLeft | InnerLeftRight
 		};
 
-		TangentType CalculateTangentType(const float* p1, const float* p2, const float* p3, const float* p4)
+		TangentType calculateTangentType(const float* p1, const float* p2, const float* p3, const float* p4)
 		{
 			bool l1 = geom::left(p1, p2, p3);
 			bool l2 = geom::left(p2, p3, p4);
@@ -986,7 +996,7 @@ namespace funnel
 			return (TangentType)(1 << ((l1 ? 2 : 0) + (l2 ? 1 : 0)));
 		}
 
-		TangentType CalculateTangentTypeSimple(const float* p1, const float* p2, const float* p3)
+		TangentType calculateTangentTypeSimple(const float* p1, const float* p2, const float* p3)
 		{
 			bool l2 = geom::left(p1, p2, p3);
 			bool l1 = l2;

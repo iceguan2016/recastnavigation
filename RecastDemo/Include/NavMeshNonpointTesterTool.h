@@ -34,7 +34,7 @@ class NavMeshNonpointTesterTool : public SampleTool
 	static const int MAX_POLYS = 256;
 	static const int MAX_SMOOTH = 2048;
 	static const int MAX_VISIT_FACES = 512;
-	static const int MAX_FUNNEL_STEPS = 50;
+	static const int MAX_FUNNEL_STEPS = 1500;
 
 	dtPolyFace m_startRef;
 	dtPolyFace m_endRef;
@@ -62,6 +62,8 @@ class NavMeshNonpointTesterTool : public SampleTool
 
 	float		m_straightPath[MAX_POLYS*3];
 	int			m_nStraightPath;
+	float		m_modifiedStraightPath[MAX_POLYS * 3 * 2];
+	int			m_nModifiedStraightPath;
 
 #if DT_DEBUG_ASTAR
 	astar::dtAstarNodeDebug m_visitedFaces[MAX_VISIT_FACES];
@@ -70,6 +72,8 @@ class NavMeshNonpointTesterTool : public SampleTool
 	int			m_portalDebugCount;
 	funnel::dtFunnelStep m_funnelSteps[MAX_FUNNEL_STEPS];
 	int			m_funnelStepCount;
+	funnel::dtRadiusModifierDebug m_modifierDebugs[MAX_POLYS];
+	int			m_modifierDebugCount;
 #endif
 
 public:

@@ -149,11 +149,13 @@ NavMeshNonpointTesterTool::NavMeshNonpointTesterTool() :
 	m_debugEdgeIdx(0),
 	m_debugFaceIdx(0),
 	m_nPathFaces(0),
-	m_nPathEdges(0)
+	m_nPathEdges(0),
+	m_nModifiedStraightPath(0)
 #if DT_DEBUG_ASTAR
 	,
 	m_nVisitedFaces(0),
-	m_funnelStepCount(0)
+	m_funnelStepCount(0),
+	m_modifierDebugCount(0)
 #endif
 {
 	m_filter.setIncludeFlags(SAMPLE_POLYFLAGS_ALL ^ SAMPLE_POLYFLAGS_DISABLED);
@@ -323,11 +325,13 @@ void NavMeshNonpointTesterTool::handleMenu()
 
 			bool isAstar = false;
 			bool isFunnel = false;
+			bool isModify = false;
 
 			if (imguiButton("Find path"))
 			{
 				isAstar = true;
 				isFunnel = true;
+				isModify = true;
 			}
 
 			if (imguiButton("Find astar path"))
@@ -338,6 +342,11 @@ void NavMeshNonpointTesterTool::handleMenu()
 			if (m_nPathEdges > 0 && imguiButton("Find straight path"))
 			{
 				isFunnel = true;
+			}
+
+			if (m_nStraightPath > 0 && imguiButton("Find modified straight path"))
+			{
+				isModify = true;
 			}
 
 			if (isAstar)
@@ -366,6 +375,18 @@ void NavMeshNonpointTesterTool::handleMenu()
 					m_funnelSteps, &m_funnelStepCount, MAX_FUNNEL_STEPS
 #endif
 				);
+			}
+
+			if (isModify)
+			{
+				funnel::dtRadiusModifier radiusModifier(radius, 10.0f);
+				radiusModifier.applyModify(m_straightPath, m_nStraightPath, 
+					m_modifiedStraightPath, &m_nModifiedStraightPath, MAX_POLYS*2
+				#if DT_DEBUG_ASTAR
+					,
+					m_modifierDebugs, &m_modifierDebugCount, MAX_POLYS
+				#endif
+					);
 			}
 
 		#if DT_DEBUG_ASTAR
@@ -657,6 +678,24 @@ void NavMeshNonpointTesterTool::handleRender()
 					const float* np = &m_straightPath[(i+1)*3];
 					duDebugDrawLine(&dd, p, np, yellowCol, 3.0f);
 				}
+			}
+
+			for (int i = 0; i < m_nModifiedStraightPath; ++i)
+			{
+				const float* p = &m_modifiedStraightPath[i * 3];
+				//duDebugDrawPoint(&dd, p, redCol, 3.0f);
+
+				if ((i + 1) < m_nModifiedStraightPath)
+				{
+					const float* np = &m_modifiedStraightPath[(i + 1) * 3];
+					duDebugDrawLine(&dd, p, np, redCol, 3.0f);
+				}
+			}
+
+			for (int i = 0; i < m_modifierDebugCount; ++i)
+			{
+				auto& d = m_modifierDebugs[i];
+				duDebugDrawCircle(&dd, d.pos[0], d.pos[1], d.pos[2], d.radius, redCol, 1.0f);
 			}
 		}
 

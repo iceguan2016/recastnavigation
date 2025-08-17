@@ -996,12 +996,27 @@ namespace funnel
 	static const float PI = 3.14159265f;
 
 	// Radius modifier
-	void dtRadiusModifier::ApplyModify(
+	void dtRadiusModifier::applyModify(
 		const float* straightPath, const int straightPathCount,
-		float* modifiedStraightPath, int* modifiedStraightPathCount, const int maxModifiedStraightPath)
+		float* modifiedStraightPath, int* modifiedStraightPathCount, const int maxModifiedStraightPath
+#if DT_DEBUG_ASTAR
+		,
+		dtRadiusModifierDebug* modifierDebug, int* modifierDebugCount, const int maxModifierDebug
+#endif
+		)
 	{
-		if (!straightPath || straightPathCount < 3) return;
-		if (!modifiedStraightPath || maxModifiedStraightPath < straightPathCount) return;
+		if (!straightPath || !modifiedStraightPath)
+		{
+			return;
+		}
+
+		if (straightPathCount < 3)
+		{
+			int count = dtMin(straightPathCount, maxModifiedStraightPath);
+			memcpy(modifiedStraightPathCount, straightPath, sizeof(float)*3*count);
+			*modifiedStraightPathCount = count;
+			return;
+		}
 
 		/** \todo Do something about these allocations */
 		std::vector<float> radi, a1, a2;
@@ -1019,6 +1034,10 @@ namespace funnel
 		radi[0] = 0;
 		radi[radi.size() - 1] = 0;
 
+	#if DT_DEBUG_ASTAR
+		*modifierDebugCount = 0;
+	#endif
+
 		int count = 0;
 		for (int i = 0; i < straightPathCount - 1; i++)
 		{
@@ -1032,18 +1051,28 @@ namespace funnel
 
 			if (i == 0) 
 			{
-				tt = CalculateTangentTypeSimple(&straightPath[i*3], &straightPath[(i + 1)*3], &straightPath[(i + 2)*3]);
+				tt = calculateTangentTypeSimple(&straightPath[i*3], &straightPath[(i + 1)*3], &straightPath[(i + 2)*3]);
 			}
 			else if (i == straightPathCount - 2)
 			{
-				tt = CalculateTangentTypeSimple(&straightPath[(i - 1)*3], &straightPath[i*3], &straightPath[(i + 1)*3]);
+				tt = calculateTangentTypeSimple(&straightPath[(i - 1)*3], &straightPath[i*3], &straightPath[(i + 1)*3]);
 			}
 			else
 			{
-				tt = CalculateTangentType(&straightPath[(i - 1)*3], &straightPath[i*3], &straightPath[(i + 1)*3], &straightPath[(i + 2)*3]);
+				tt = calculateTangentType(&straightPath[(i - 1)*3], &straightPath[i*3], &straightPath[(i + 1)*3], &straightPath[(i + 2)*3]);
 			}
 
 			//DrawCircle (vs[i], radi[i], Color.yellow);
+		#if DT_DEBUG_ASTAR
+			if (*modifierDebugCount < maxModifierDebug)
+			{
+				auto debug = &modifierDebug[*modifierDebugCount];
+				dtVcopy(debug->pos, &straightPath[i*3]);
+				debug->radius = radi[i];
+
+				++(*modifierDebugCount);
+			}
+		#endif
 
 			if ((tt & TangentType::Inner) != 0) 
 			{
@@ -1053,7 +1082,7 @@ namespace funnel
 				float sigma;
 
 				//Calculate angles to the next circle and angles for the inner tangents
-				if (!CalculateCircleInner(&straightPath[i*3], &straightPath[(i + 1)*3], radi[i], radi[i + 1], &a, &sigma))
+				if (!calculateCircleInner(&straightPath[i*3], &straightPath[(i + 1)*3], radi[i], radi[i + 1], &a, &sigma))
 				{
 					//Failed, try modifying radiuses
 					float magn = dtVdist(&straightPath[(i + 1)*3], &straightPath[i*3]);
@@ -1084,7 +1113,7 @@ namespace funnel
 				float a;
 
 				//Calculate angles to the next circle and angles for the outer tangents
-				if (!CalculateCircleOuter(&straightPath[i*3], &straightPath[(i + 1)*3], radi[i], radi[i + 1], &a, &sigma))
+				if (!calculateCircleOuter(&straightPath[i*3], &straightPath[(i + 1)*3], radi[i], radi[i + 1], &a, &sigma))
 				{
 					//Failed, try modifying radiuses
 					if (i == straightPathCount - 2) {
@@ -1151,7 +1180,7 @@ namespace funnel
 						float offset[3];
 						offset[0] = dtMathCosf(t);
 						offset[1] = 0.0f;
-						offset[2] = dtMathCosf(t);
+						offset[2] = dtMathSinf(t);
 						
 						dtVmad(&modifiedStraightPath[newPathCount*3], &straightPath[i*3], offset, rad);
 						++newPathCount;
@@ -1166,7 +1195,7 @@ namespace funnel
 					float offset[3];
 					offset[0] = dtMathCosf(t);
 					offset[1] = 0.0f;
-					offset[2] = dtMathCosf(t);
+					offset[2] = dtMathSinf(t);
 
 					dtVmad(&modifiedStraightPath[newPathCount * 3], &straightPath[i * 3], offset, rad);
 					++newPathCount;
@@ -1176,7 +1205,7 @@ namespace funnel
 
 		if (newPathCount < maxModifiedStraightPath)
 		{
-			dtVcopy(&modifiedStraightPath[newPathCount * 3], &straightPath[straightPathCount - 1]);
+			dtVcopy(&modifiedStraightPath[newPathCount * 3], &straightPath[(straightPathCount - 1) * 3]);
 			++newPathCount;
 		}
 
