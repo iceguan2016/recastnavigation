@@ -694,7 +694,8 @@ namespace funnel
 		const float radius
 #if DT_DEBUG_ASTAR
 		,
-		dtFunnelDebug* portalDebugs, int* portalDebugCount, const int maxPortalDebug
+		dtFunnelDebug* portalDebugs, int* portalDebugCount, const int maxPortalDebug,
+		dtFunnelStep* funnelSteps, int* funnelStepCount, const int maxFunnelStep
 #endif
 		)
 	{
@@ -705,6 +706,7 @@ namespace funnel
 
 #if DT_DEBUG_ASTAR
 		*portalDebugCount = 0;
+		*funnelStepCount = 0;
 #endif
 
 		if (!startPos || !dtVisfinite(startPos) ||
@@ -741,142 +743,171 @@ namespace funnel
 			auto leftPolyFace = path[0];
 			auto rightPolyFace = path[0];
 
+			// 预先处理所有edge，并确定左右顶点
 			std::unordered_map<dtPolyVertex, int, dtPolyPrimitiveHash> vertexSideCache;
+			std::vector<float> points;
+			std::vector<int> pointSides;
+			points.resize(portalEdgeCount * 2 * 3);
+			pointSides.resize(portalEdgeCount * 2);
+			int pointCount = 0;
+
+			static const int POINT_SIDE_LEFT =   1;
+			static const int POINT_SIDE_RIGHT = -1;
 
 			dtPolyVertex fromVertex;
 			dtPolyVertex fromFromVertex;
 			float fromVertexPos[3], fromFromVertexPos[3];
 			dtPolyVertex currVertex;
-			for (int i = 0; i <= portalEdgeCount; ++i)
+			for (int i = 0; i < portalEdgeCount; ++i)
 			{
-				float left[3], right[3];
-				if (i == portalEdgeCount)
+				// we identify the current vertex and his origin vertex
+				auto currEdge = &portalEdges[i];
+
+				int direction = 0;
+				dtPolyVertex origin, destination;
+				if (!queriers::edgeOriginAndDestinationVertex(*currEdge, &origin, &destination))
 				{
-					// 注意一定要把终点也加入到漏斗中，不然最后一个拐点会丢失
-					dtVcopy(right, endPos);
-					dtVcopy(left, endPos);
+					return DT_FAILURE;
+				}
+
+				float originPos[3], destinationPos[3];
+				queriers::vertexPosition(origin, originPos);
+				queriers::vertexPosition(destination, destinationPos);
+
+				if (i == 0)
+				{
+					auto side = geom::relativeSide(startPos, originPos, destinationPos);
+					if (side == geom::REL_SIDE_LEFT)
+					{
+						vertexSideCache[destination] = POINT_SIDE_LEFT;
+						vertexSideCache[origin] = POINT_SIDE_RIGHT;
+					}
+					else
+					{
+						vertexSideCache[destination] = POINT_SIDE_RIGHT;
+						vertexSideCache[origin] = POINT_SIDE_LEFT;
+					}
+
+					direction = -side;
+					fromVertex = origin;
+					fromFromVertex = destination;
+					dtVcopy(fromVertexPos, originPos);
+					dtVcopy(fromFromVertexPos, destinationPos);
+					// 
+					dtVcopy(&points[pointCount*3], originPos);
+					pointSides[pointCount] = vertexSideCache[origin];
+					++pointCount;
+					dtVcopy(&points[pointCount * 3], destinationPos);
+					pointSides[pointCount] = vertexSideCache[destination];
+					++pointCount;
 				}
 				else
 				{
-					// we identify the current vertex and his origin vertex
-					auto currEdge = &portalEdges[i];
-
-					int direction = 0;
-					dtPolyVertex origin, destination;
-					if (!queriers::edgeOriginAndDestinationVertex(*currEdge, &origin, &destination))
+					if (dtVequal(originPos, fromVertexPos))
 					{
-						return DT_FAILURE;
+						currVertex = destination;
 					}
-
-					float originPos[3], destinationPos[3];
-					queriers::vertexPosition(origin, originPos);
-					queriers::vertexPosition(destination, destinationPos);
-
-					if (i == 0)
+					else if (dtVequal(destinationPos, fromVertexPos))
 					{
-						auto side = geom::relativeSide(startPos, originPos, destinationPos);
-						if (side == geom::REL_SIDE_LEFT)
-						{
-							vertexSideCache[destination] = geom::REL_SIDE_LEFT;
-							vertexSideCache[origin] = geom::REL_SIDE_RIGHT;
-						}
-						else
-						{
-							vertexSideCache[destination] = geom::REL_SIDE_RIGHT;
-							vertexSideCache[origin] = geom::REL_SIDE_LEFT;
-						}
-
-						direction = -side;
-						fromVertex = origin;
-						fromFromVertex = destination;
-						dtVcopy(fromVertexPos, originPos);
-						dtVcopy(fromFromVertexPos, destinationPos);
+						currVertex = origin;
+					}
+					else if (dtVequal(originPos, fromFromVertexPos))
+					{
+						currVertex = destination;
+						fromVertex = fromFromVertex;
+						dtVcopy(fromVertexPos, fromFromVertexPos);
+					}
+					else if (dtVequal(destinationPos, fromFromVertexPos))
+					{
+						currVertex = origin;
+						fromVertex = fromFromVertex;
+						dtVcopy(fromVertexPos, fromFromVertexPos);
 					}
 					else
 					{
-						if (dtVequal(originPos, fromVertexPos))
-						{
-							currVertex = destination;
-						}
-						else if (dtVequal(destinationPos, fromVertexPos))
-						{
-							currVertex = origin;
-						}
-						else if (dtVequal(originPos, fromFromVertexPos))
-						{
-							currVertex = destination;
-							fromVertex = fromFromVertex;
-							dtVcopy(fromVertexPos, fromFromVertexPos);
-						}
-						else if (dtVequal(destinationPos, fromFromVertexPos))
-						{
-							currVertex = origin;
-							fromVertex = fromFromVertex;
-							dtVcopy(fromVertexPos, fromFromVertexPos);
-						}
-						else
-						{
-							dtAssert(false && "IMPOSSIBLE TO IDENTIFY THE VERTEX !!!");
-							//return DT_FAILURE;
-						}
-
-						auto find_iter = vertexSideCache.find(fromVertex);
-						dtAssert(find_iter != vertexSideCache.end() && "straightPathByRadius, find fromVertex failed!!!");
-						direction = -(*find_iter).second;
-
-						fromFromVertex = fromVertex;
-						fromVertex = currVertex;
-						dtVcopy(fromFromVertexPos, fromVertexPos);
-						queriers::vertexPosition(currVertex, fromVertexPos);
-
-						vertexSideCache[fromVertex] = direction;
-						vertexSideCache[fromFromVertex] = -direction;
+						dtAssert(false && "IMPOSSIBLE TO IDENTIFY THE VERTEX !!!");
+						//return DT_FAILURE;
 					}
+
+					auto find_iter = vertexSideCache.find(fromVertex);
+					dtAssert(find_iter != vertexSideCache.end() && "straightPathByRadius, find fromVertex failed!!!");
+					direction = -(*find_iter).second;
+
+					fromFromVertex = fromVertex;
+					fromVertex = currVertex;
+					dtVcopy(fromFromVertexPos, fromVertexPos);
+					queriers::vertexPosition(currVertex, fromVertexPos);
+
+					vertexSideCache[fromVertex] = direction;
+					vertexSideCache[fromFromVertex] = -direction;
+					// 
+					dtVcopy(&points[pointCount * 3], fromVertexPos);
+					pointSides[pointCount] = direction;
+					++pointCount;
+				}
 
 #if DT_DEBUG_ASTAR
-					if (*portalDebugCount < maxPortalDebug)
-					{
-						auto portalDebug = &portalDebugs[*portalDebugCount];
-						portalDebug->portalEdge = *currEdge;
-						if (direction == geom::REL_SIDE_RIGHT)
-						{
-							portalDebug->portalRight = fromVertex;
-							portalDebug->portalLeft = fromFromVertex;
-						}
-						else
-						{
-							portalDebug->portalRight = fromFromVertex;
-							portalDebug->portalLeft = fromVertex;
-						}
-
-						(*portalDebugCount)++;
-					}
-#endif
-
+				if (*portalDebugCount < maxPortalDebug)
+				{
+					auto portalDebug = &portalDebugs[*portalDebugCount];
+					portalDebug->portalEdge = *currEdge;
 					if (direction == geom::REL_SIDE_RIGHT)
 					{
-						// fromVertex on right
-						dtVcopy(right, fromVertexPos);
-						dtVcopy(left, fromFromVertexPos);
-						//queriers::vertexPosition(fromVertex, right);
-						//queriers::vertexPosition(fromFromVertex, left);
+						portalDebug->portalRight = fromVertex;
+						portalDebug->portalLeft = fromFromVertex;
 					}
 					else
 					{
-						// fromVertex on left
-						dtVcopy(right, fromFromVertexPos);
-						dtVcopy(left, fromVertexPos);
-						//queriers::vertexPosition(fromFromVertex, right);
-						//queriers::vertexPosition(fromVertex, left);
+						portalDebug->portalRight = fromFromVertex;
+						portalDebug->portalLeft = fromVertex;
 					}
-				}			
+
+					(*portalDebugCount)++;
+				}
+#endif			
+			}
+
+			// add end point
+			dtVcopy(&points[pointCount * 3], endPos);
+			pointSides[pointCount] = POINT_SIDE_LEFT;
+			++pointCount;
+			dtVcopy(&points[pointCount * 3], endPos);
+			pointSides[pointCount] = POINT_SIDE_RIGHT;
+			++pointCount;
+
+			int iterCount = 0;
+			static const int MAX_ITER_COUNT = 100;
+			for (int i = 0; i < pointCount; ++i)
+			{
+				++iterCount;
+				if (iterCount >= MAX_ITER_COUNT)
+					return DT_FAILURE;
+				
+				int side = pointSides[i];
+				const float* point = &points[i*3];
+
+			#if DT_DEBUG_ASTAR
+				auto step = &funnelSteps[*funnelStepCount];
+				dtVcopy(step->apexPos, portalApex);
+				dtVcopy(step->leftPos, portalLeft);
+				dtVcopy(step->rightPos, portalRight);
+				dtVcopy(step->currPos, point);
+				step->currSide = side;
+				++(*funnelStepCount);
+
+				if (*funnelStepCount >= maxFunnelStep)
+				{
+					return DT_FAILURE;
+				}
+			#endif
 
 				// Right vertex.
-				if (dtTriArea2D(portalApex, portalRight, right) >= 0.0f)
+				if (side == POINT_SIDE_RIGHT &&
+					dtTriArea2D(portalApex, portalRight, point) >= 0.0f)
 				{
-					if (dtVequal(portalApex, portalRight) || dtTriArea2D(portalApex, portalLeft, right) < 0.0f)
+					if (dtVequal(portalApex, portalRight) || dtTriArea2D(portalApex, portalLeft, point) <= 0.0f)
 					{
-						dtVcopy(portalRight, right);
+						dtVcopy(portalRight, point);
 						rightPolyFace = (i + 1 < pathSize) ? path[i + 1] : dtPolyFace::INVALID;
 						rightIndex = i;
 					}
@@ -912,11 +943,12 @@ namespace funnel
 				}
 
 				// Left vertex.
-				if (dtTriArea2D(portalApex, portalLeft, left) <= 0.0f)
+				if (side == POINT_SIDE_LEFT &&
+					dtTriArea2D(portalApex, portalLeft, point) <= 0.0f)
 				{
-					if (dtVequal(portalApex, portalLeft) || dtTriArea2D(portalApex, portalRight, left) > 0.0f)
+					if (dtVequal(portalApex, portalLeft) || dtTriArea2D(portalApex, portalRight, point) >= 0.0f)
 					{
-						dtVcopy(portalLeft, left);
+						dtVcopy(portalLeft, point);
 						leftPolyFace = (i + 1 < pathSize) ? path[i + 1] : dtPolyFace::INVALID;
 						leftIndex = i;
 					}
@@ -951,7 +983,7 @@ namespace funnel
 					}
 				}
 			}
-		}
+		}	
 
 		// Ignore status return value as we're just about to return anyway.
 		appendVertex(endPos, DT_STRAIGHTPATH_END, dtPolyFace::INVALID,

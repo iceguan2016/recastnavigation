@@ -877,6 +877,15 @@ namespace funnel
 		dtPolyVertex portalRight;
 	};
 
+	struct dtFunnelStep
+	{
+		float	apexPos[3];
+		float	leftPos[3];
+		float	rightPos[3];
+		float	currPos[3];
+		int		currSide;
+	};
+
 	dtStatus straightPathByRadius(const float* startPos, const float* endPos,
 		const dtPolyFace* path, const int pathSize,
 		const dtPolyEdge* portalEdges, const int portalEdgeCount,
@@ -885,7 +894,8 @@ namespace funnel
 		const float radius
 	#if DT_DEBUG_ASTAR
 		,
-		dtFunnelDebug* portalDebugs, int* portalDebugCount, const int maxPortalDebug
+		dtFunnelDebug* portalDebugs, int* portalDebugCount, const int maxPortalDebug,
+		dtFunnelStep* funnelSteps, int* funnelStepCount, const int maxFunnelStep
 	#endif
 		);
 }

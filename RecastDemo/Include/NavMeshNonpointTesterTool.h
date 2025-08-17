@@ -34,6 +34,7 @@ class NavMeshNonpointTesterTool : public SampleTool
 	static const int MAX_POLYS = 256;
 	static const int MAX_SMOOTH = 2048;
 	static const int MAX_VISIT_FACES = 512;
+	static const int MAX_FUNNEL_STEPS = 50;
 
 	dtPolyFace m_startRef;
 	dtPolyFace m_endRef;
@@ -67,6 +68,8 @@ class NavMeshNonpointTesterTool : public SampleTool
 	int			m_nVisitedFaces;
 	funnel::dtFunnelDebug m_portalDebugs[MAX_POLYS];
 	int			m_portalDebugCount;
+	funnel::dtFunnelStep m_funnelSteps[MAX_FUNNEL_STEPS];
+	int			m_funnelStepCount;
 #endif
 
 public:
