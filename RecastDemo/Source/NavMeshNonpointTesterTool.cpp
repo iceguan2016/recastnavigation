@@ -319,7 +319,26 @@ void NavMeshNonpointTesterTool::handleMenu()
 			const float agentRadius = m_sample->getAgentRadius();
 			float radius = debugFindPathRadius; //dtMax(debugFindPathRadius - agentRadius, 0.1f);
 
+			bool isAstar = false;
+			bool isFunnel = false;
+
 			if (imguiButton("Find path"))
+			{
+				isAstar = true;
+				isFunnel = true;
+			}
+
+			if (imguiButton("Find astar path"))
+			{
+				isAstar = true;
+			}
+
+			if (m_nPathEdges > 0 && imguiButton("Find straight path"))
+			{
+				isFunnel = true;
+			}
+
+			if (isAstar)
 			{
 				auto stat = m_navQuery->findPathByRadius(m_startRef, m_endRef, m_spos, m_epos, &m_filter, 
 					m_pathFaces, &m_nPathFaces, MAX_POLYS,
@@ -333,7 +352,7 @@ void NavMeshNonpointTesterTool::handleMenu()
 					);
 			}
 
-			if (imguiButton("Find straight path"))
+			if (isFunnel)
 			{
 				funnel::straightPathByRadius(m_spos, m_epos,
 					m_pathFaces, m_nPathFaces, m_pathEdges, m_nPathEdges,

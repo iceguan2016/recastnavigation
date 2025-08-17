@@ -869,8 +869,7 @@ namespace funnel
 						//queriers::vertexPosition(fromFromVertex, right);
 						//queriers::vertexPosition(fromVertex, left);
 					}
-				}
-				
+				}			
 
 				// Right vertex.
 				if (dtTriArea2D(portalApex, portalRight, right) >= 0.0f)
