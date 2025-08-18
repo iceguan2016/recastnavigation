@@ -10,7 +10,7 @@
 #include <sstream>
 #include <chrono>
 
-#define DT_DEBUG_ASTAR 1
+#define DT_DEBUG_ASTAR 0
 
 // 处理带有半径的单位寻路
 typedef unsigned short dtPrimIndex;

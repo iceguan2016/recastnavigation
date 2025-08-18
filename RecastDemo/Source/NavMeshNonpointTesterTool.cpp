@@ -42,7 +42,7 @@ static float debugFindPathIters = 100;
 static bool  debugDrawAstarVisitedFaces = false;
 static bool  debugDrawAstarPathFaces = true;
 static bool  debugDrawFunnelPathEdges = false;
-static bool  debugDrawFunnelPortalDebug = true;
+static bool  debugDrawFunnelDebug = true;
 static float debugDrawFunnelPortalDebugIndex = 0;
 static bool  debugDrawFunnelStraightPath = true;
 static float debugDrawFunnelStepIndex = 0;
@@ -446,9 +446,9 @@ void NavMeshNonpointTesterTool::handleMenu()
 			{
 				debugDrawFunnelPathEdges = !debugDrawFunnelPathEdges;
 			}
-			if (imguiCheck("Draw funnel portal debug", debugDrawFunnelPortalDebug))
+			if (imguiCheck("Draw funnel portal debug", debugDrawFunnelDebug))
 			{
-				debugDrawFunnelPortalDebug = !debugDrawFunnelPortalDebug;
+				debugDrawFunnelDebug = !debugDrawFunnelDebug;
 			}
 			if (imguiCheck("Draw funnel straight path", debugDrawFunnelStraightPath))
 			{
@@ -612,14 +612,14 @@ void NavMeshNonpointTesterTool::handleRender()
 	}
 	else if (m_toolMode == TOOLMODE_PATHFIND_FIND_PATH)
 	{
-#if DT_DEBUG_ASTAR
 		static const unsigned int pointCol = duRGBA(255, 255, 0, 64);
-		static const unsigned int faceCols[3] = { 
+		static const unsigned int faceCols[3] = {
 			duRGBA(255, 0, 0, 64),
-			duRGBA(0, 255, 0, 64), 
-			duRGBA(0, 0, 255, 64), 
+			duRGBA(0, 255, 0, 64),
+			duRGBA(0, 0, 255, 64),
 		};
 
+#if DT_DEBUG_ASTAR
 		if (debugDrawAstarVisitedFaces && m_nVisitedFaces > 0)
 		{
 			for (int i = 0; i < m_nVisitedFaces; ++i)
@@ -629,7 +629,7 @@ void NavMeshNonpointTesterTool::handleRender()
 			}
 		}
 
-		if (debugDrawFunnelPortalDebug && m_portalDebugCount > 0)
+		if (debugDrawFunnelDebug && m_portalDebugCount > 0)
 		{
 			int debugIndex = (int)dtClamp(debugDrawFunnelPortalDebugIndex, 0.0f, (float)(m_portalDebugCount-1));
 			for (int i = 0; i < m_portalDebugCount; ++i)
@@ -645,6 +645,36 @@ void NavMeshNonpointTesterTool::handleRender()
 					duDebugDrawPoint(&dd, left, greenCol, 10.0f);
 					duDebugDrawPoint(&dd, right, blueCol, 10.0f);
 				}
+			}
+		}
+
+		if (debugDrawFunnelDebug && m_funnelStepCount > 0)
+		{
+			for (int i = 0; i < m_funnelStepCount; ++i)
+			{
+				const auto& d = m_funnelSteps[i];
+
+				if (i == (int)debugDrawFunnelStepIndex)
+				{
+					duDebugDrawPoint(&dd, d.apexPos, redCol, 10.0f);
+					duDebugDrawLine(&dd, d.apexPos, d.leftPos, greenCol, 3.0f);
+					duDebugDrawLine(&dd, d.apexPos, d.rightPos, blueCol, 3.0f);
+
+					if (d.currSide == 1)
+						duDebugDrawPoint(&dd, d.currPos, greenCol, 10.0f);
+					else
+						duDebugDrawPoint(&dd, d.currPos, blueCol, 10.0f);
+
+				}
+			}
+		}
+
+		if (debugDrawFunnelDebug && m_modifierDebugCount > 0)
+		{
+			for (int i = 0; i < m_modifierDebugCount; ++i)
+			{
+				auto& d = m_modifierDebugs[i];
+				duDebugDrawCircle(&dd, d.pos[0], d.pos[1], d.pos[2], d.radius, redCol, 1.0f);
 			}
 		}
 #endif
@@ -689,33 +719,6 @@ void NavMeshNonpointTesterTool::handleRender()
 				{
 					const float* np = &m_modifiedStraightPath[(i + 1) * 3];
 					duDebugDrawLine(&dd, p, np, redCol, 3.0f);
-				}
-			}
-
-			for (int i = 0; i < m_modifierDebugCount; ++i)
-			{
-				auto& d = m_modifierDebugs[i];
-				duDebugDrawCircle(&dd, d.pos[0], d.pos[1], d.pos[2], d.radius, redCol, 1.0f);
-			}
-		}
-
-		if (m_funnelStepCount > 0)
-		{
-			for (int i = 0; i < m_funnelStepCount; ++i)
-			{
-				const auto& d = m_funnelSteps[i];
-
-				if (i == (int)debugDrawFunnelStepIndex)
-				{
-					duDebugDrawPoint(&dd, d.apexPos, redCol, 10.0f);
-					duDebugDrawLine(&dd, d.apexPos, d.leftPos, greenCol, 3.0f);
-					duDebugDrawLine(&dd, d.apexPos, d.rightPos, blueCol, 3.0f);
-
-					if (d.currSide == 1)
-						duDebugDrawPoint(&dd, d.currPos, greenCol, 10.0f);
-					else
-						duDebugDrawPoint(&dd, d.currPos, blueCol, 10.0f);
-						
 				}
 			}
 		}
