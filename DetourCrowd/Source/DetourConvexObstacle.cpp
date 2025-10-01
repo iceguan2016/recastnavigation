@@ -89,7 +89,7 @@ bool dtConvexObstacle::WorldToLocalDirection(float* dest, const float* v) const
 	return true;
 }
 
-bool dtBoxObstacle::IntersectEvaluateWithCircle(const float* c, const float r, const float h) const
+bool dtBoxObstacle::ContactEvaluateWithCircle(const float* c, const float r, const float h) const
 {
 	float min[3], max[3];
 	dtVset(min, c[0] - r, c[1] - h / 2, c[2] - r);
@@ -103,7 +103,7 @@ bool dtBoxObstacle::IntersectEvaluateWithCircle(const float* c, const float r, c
 		&& worldAabb[1][2] >= min[2];
 }
 
-bool dtBoxObstacle::IntersectResultWithCircle(const float* c, const float r, dtContactInfo& contact) const
+bool dtBoxObstacle::ContactResultWithCircle(const float* c, const float r, dtContactInfo& contact) const
 {
 	float vertices[4][3], normals[4][3];
 	box_local_vertices_and_normals(localExtent, vertices, normals);

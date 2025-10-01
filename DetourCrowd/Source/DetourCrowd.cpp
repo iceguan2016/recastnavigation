@@ -1307,7 +1307,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			if (m_convexObstacles)
 			{
 				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
-					if (obs->IntersectEvaluateWithCircle(ag->npos, m_queryConvexObstaclesRadius, ag->params.height))
+					if (obs->ContactEvaluateWithCircle(ag->npos, m_queryConvexObstaclesRadius, ag->params.height))
 					{
 						obs->ForeachSegement([&](const float* p0, const float* p1)->bool {
 							if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
@@ -1439,10 +1439,10 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 				dtVset(ag->disp, 0, 0, 0);
 
 				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
-					if (obs->IntersectEvaluateWithCircle(ag->npos, ag->params.radius, ag->params.height))
+					if (obs->ContactEvaluateWithCircle(ag->npos, ag->params.radius, ag->params.height))
 					{
 						dtContactInfo contact;
-						if (obs->IntersectResultWithCircle(ag->npos, ag->params.radius, contact))
+						if (obs->ContactResultWithCircle(ag->npos, ag->params.radius, contact))
 						{
 							// shape0: Box, shape1: Circle
 							dtVmad(ag->disp, ag->disp, contact.normal, -contact.separation);
