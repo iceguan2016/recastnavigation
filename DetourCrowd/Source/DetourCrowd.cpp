@@ -1451,15 +1451,15 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 					return true;
 				});
 			}
-		}
 
-		for (int i = 0; i < nagents; ++i)
-		{
-			dtCrowdAgent* ag = agents[i];
-			if (ag->state != DT_CROWDAGENT_STATE_WALKING)
-				continue;
+			for (int i = 0; i < nagents; ++i)
+			{
+				dtCrowdAgent* ag = agents[i];
+				if (ag->state != DT_CROWDAGENT_STATE_WALKING)
+					continue;
 
-			dtVadd(ag->npos, ag->npos, ag->disp);
+				dtVadd(ag->npos, ag->npos, ag->disp);
+			}
 		}
 		// end
 	}
