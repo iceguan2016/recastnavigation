@@ -1425,6 +1425,43 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			
 			dtVadd(ag->npos, ag->npos, ag->disp);
 		}
+
+		// add by iceguan
+		// Collision with convex obstacles
+		if (m_convexObstacles)
+		{
+			for (int i = 0; i < nagents; ++i)
+			{
+				dtCrowdAgent* ag = agents[i];
+				if (ag->state != DT_CROWDAGENT_STATE_WALKING)
+					continue;
+
+				dtVset(ag->disp, 0, 0, 0);
+
+				const float queryObstacleRadius = 6.0f;
+				m_convexObstacles->ForeachByRadius(ag->npos, queryObstacleRadius, [&](const TConvexObstaclePtr& obs)->bool {
+					if (obs->IntersectEvaluateWithCircle(ag->npos, ag->params.radius))
+					{
+						dtContactInfo contact;
+						if (obs->IntersectResultWithCircle(ag->npos, ag->params.radius, contact))
+						{
+							dtVmad(ag->disp, ag->disp, contact.normal, -contact.separation);
+						}
+					}
+					return true;
+				});
+			}
+		}
+
+		for (int i = 0; i < nagents; ++i)
+		{
+			dtCrowdAgent* ag = agents[i];
+			if (ag->state != DT_CROWDAGENT_STATE_WALKING)
+				continue;
+
+			dtVadd(ag->npos, ag->npos, ag->disp);
+		}
+		// end
 	}
 	
 	for (int i = 0; i < nagents; ++i)
