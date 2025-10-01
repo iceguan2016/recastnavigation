@@ -56,7 +56,7 @@ public:
 
 	virtual ~dtConvexObstacle() {}
 
-	virtual bool	IntersectEvaluateWithCircle(const float* c, const float r) const = 0;
+	virtual bool	IntersectEvaluateWithCircle(const float* c, const float r, const float h) const = 0;
 	virtual bool	IntersectResultWithCircle(const float* c, const float r, dtContactInfo& contact) const = 0;
 
 	virtual void	Tick(float dt) const = 0;
@@ -77,7 +77,7 @@ protected:
 class dtBoxObstacle : public dtConvexObstacle
 {
 public:
-	virtual bool	IntersectEvaluateWithCircle(const float* c, const float r) const override;
+	virtual bool	IntersectEvaluateWithCircle(const float* c, const float r, const float h) const override;
 	virtual bool	IntersectResultWithCircle(const float* c, const float r, dtContactInfo& contact) const override;
 
 	virtual void	Tick(float dt) const override;
