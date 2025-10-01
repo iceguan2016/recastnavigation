@@ -342,7 +342,8 @@ dtCrowd::dtCrowd() :
 	m_velocitySampleCount(0),
 	m_navquery(0),
 	// add by iceguan
-	m_convexObstacles(0)
+	m_convexObstacles(0),
+	m_queryConvexObstaclesRadius(6.0f)
 	// end
 {
 }
@@ -1305,9 +1306,8 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			// Append convex obstacle boundary segments
 			if (m_convexObstacles)
 			{
-				const float queryObstacleRadius = 6.0f;
-				m_convexObstacles->ForeachByRadius(ag->npos, queryObstacleRadius, [&](const TConvexObstaclePtr& obs)->bool {
-					if (obs->IntersectEvaluateWithCircle(ag->npos, queryObstacleRadius, ag->params.height))
+				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
+					if (obs->IntersectEvaluateWithCircle(ag->npos, m_queryConvexObstaclesRadius, ag->params.height))
 					{
 						obs->ForeachSegement([&](const float* p0, const float* p1)->bool {
 							if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
@@ -1438,8 +1438,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 
 				dtVset(ag->disp, 0, 0, 0);
 
-				const float queryObstacleRadius = 6.0f;
-				m_convexObstacles->ForeachByRadius(ag->npos, queryObstacleRadius, [&](const TConvexObstaclePtr& obs)->bool {
+				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 					if (obs->IntersectEvaluateWithCircle(ag->npos, ag->params.radius, ag->params.height))
 					{
 						dtContactInfo contact;

@@ -208,6 +208,7 @@ class dtCrowd
 {
 	// add by iceguan
 	TConvexObstacleProximityDatabase* m_convexObstacles;
+	float m_queryConvexObstaclesRadius;
 	// end
 
 	int m_maxAgents;
@@ -251,6 +252,7 @@ public:
 
 	// add by icgeuan
 	void setConvexObstacleProximityDatabase(TConvexObstacleProximityDatabase* database) { m_convexObstacles = database; }
+	void setQueryConvexObstaclesRadius(const float radius) { m_queryConvexObstaclesRadius = radius; }
 	// end
 	
 	/// Initializes the crowd.  
