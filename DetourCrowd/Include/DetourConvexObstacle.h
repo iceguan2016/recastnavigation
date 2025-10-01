@@ -5,18 +5,87 @@
 #include <functional>
 
 #include "DetourProximityDatabase.h"
+#include "DetourCommon.h"
+
+/// ```svgbob
+///             +-----------+
+///             | shape[1] |
+///             |           |
+/// +-----------+----+      |
+/// | shape[0]  |    |      |
+/// |           |    |      |
+/// |     point |    |      |
+/// |           *--->|      |
+/// |           |  normal   |
+/// |           |    |      |
+/// |           |    |      |
+/// +-----------+----+      |
+///             |           |
+///             |-----------+
+///             .    .
+///             :<-->:
+///             :    :
+///           separation
+/// ```
+struct dtContactInfo
+{
+	/// Contact point on the surface of second shape (world space).
+	float point[3];
+	/// Separation normal at the contact point on the second entity (world space).
+	float normal[3];
+	/// Separation between two shapes, positive for penetration.
+	float separation;
+};
 
 class dtConvexObstacle
 {
 public:
 	using TCallback = std::function<bool(const float* p0, const float* p1)>;
 
+	dtConvexObstacle()
+	{
+		dtVset(worldCenter, 0.0f, 0.0f, 0.0f);
+
+		dtVset(worldAxis[0], 1.0f, 0.0f, 0.0f);
+		dtVset(worldAxis[1], 0.0f, 1.0f, 0.0f);
+		dtVset(worldAxis[2], 0.0f, 0.0f, 1.0f);
+
+		dtVset(worldAabb[0], 0.0f, 0.0f, 0.0f);
+		dtVset(worldAabb[1], 0.0f, 0.0f, 0.0f);
+	}
+
 	virtual ~dtConvexObstacle() {}
 
-	virtual bool Eval(const float* c, const float r) const = 0;
-	virtual void Tick(float dt) const = 0;
-	virtual int SegmentNum() const = 0;
-	virtual int ForeachSegement(TCallback func) const = 0;
+	virtual bool	IntersectEvaluateWithCircle(const float* c, const float r) const = 0;
+	virtual bool	IntersectResultWithCircle(const float* c, const float r, dtContactInfo& contact) const = 0;
+
+	virtual void	Tick(float dt) const = 0;
+	virtual int		SegmentNum() const = 0;
+	virtual void	ForeachSegement(TCallback func) const = 0;
+
+	bool LocalToWorldPosition(float* dest, const float* p) const;
+	bool WorldToLocalPosition(float* dest, const float* p) const;
+	bool LocalToWorldDirection(float* dest, const float* v) const;
+	bool WorldToLocalDirection(float* dest, const float* v) const;
+
+protected:
+	float worldCenter[3];
+	float worldAxis[3][3];
+	float worldAabb[2][3];
+};
+
+class dtBoxObstacle : public dtConvexObstacle
+{
+public:
+	virtual bool	IntersectEvaluateWithCircle(const float* c, const float r) const override;
+	virtual bool	IntersectResultWithCircle(const float* c, const float r, dtContactInfo& contact) const override;
+
+	virtual void	Tick(float dt) const override;
+	virtual int		SegmentNum() const override;
+	virtual void	ForeachSegement(TCallback func) const override;
+
+protected:
+	float localExtent[3];
 };
 
 typedef dtConvexObstacle* TConvexObstaclePtr;

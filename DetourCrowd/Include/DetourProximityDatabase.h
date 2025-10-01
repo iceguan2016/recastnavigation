@@ -44,6 +44,7 @@ class dtProximityDatabase
 public:
 	using TTokenForProximityDatabase = dtTokenForProximityDatabase<T>;
 	using TCallback = std::function<bool(const T&)>;
+	using TCallbackMut = std::function<bool(T&)>;
 
 	virtual ~dtProximityDatabase() {}
 
@@ -51,10 +52,8 @@ public:
 
 	virtual void FreeToken(TTokenForProximityDatabase *token) = 0;
 
-	virtual void ForeachByRadius(
-		const float*	center,
-		const float		radius,
-		TCallback		callback) = 0;
+	virtual void ForeachByRadius(const float* center, const float radius, TCallback	callback) = 0;
+	virtual void ForeachAllMut(TCallbackMut	callback) = 0;
 
 	virtual void UpdateForNewLocation(TTokenForProximityDatabase& token, const float* pos) = 0;
 

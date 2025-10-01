@@ -1056,6 +1056,17 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 	m_velocitySampleCount = 0;
 	
 	const int debugIdx = debug ? debug->idx : -1;
+
+	// add by iceguan
+	// Update obstacles
+	if (m_convexObstacles)
+	{
+		m_convexObstacles->ForeachAllMut([dt](TConvexObstaclePtr& obs)->bool {
+			obs->Tick(dt);
+			return true;
+		});
+	}
+	// end
 	
 	dtCrowdAgent** agents = m_activeAgents;
 	int nagents = getActiveAgents(agents, m_maxAgents);
@@ -1296,7 +1307,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			{
 				const float queryObstacleRadius = 6.0f;
 				m_convexObstacles->ForeachByRadius(ag->npos, queryObstacleRadius, [&](const TConvexObstaclePtr& obs)->bool {
-					if (obs->Eval(ag->npos, queryObstacleRadius))
+					if (obs->IntersectEvaluateWithCircle(ag->npos, queryObstacleRadius))
 					{
 						obs->ForeachSegement([&](const float* p0, const float* p1)->bool {
 							if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
