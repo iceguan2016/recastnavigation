@@ -78,6 +78,7 @@ class dtBoxObstacle : public dtConvexObstacle
 {
 public:
 	virtual bool	IntersectEvaluateWithCircle(const float* c, const float r, const float h) const override;
+	// shape0: Box, shape1: Circle
 	virtual bool	IntersectResultWithCircle(const float* c, const float r, dtContactInfo& contact) const override;
 
 	virtual void	Tick(float dt) const override;

@@ -1444,6 +1444,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 						dtContactInfo contact;
 						if (obs->IntersectResultWithCircle(ag->npos, ag->params.radius, contact))
 						{
+							// shape0: Box, shape1: Circle
 							dtVmad(ag->disp, ag->disp, contact.normal, -contact.separation);
 						}
 					}
