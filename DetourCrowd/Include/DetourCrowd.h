@@ -25,6 +25,10 @@
 #include "DetourPathCorridor.h"
 #include "DetourProximityGrid.h"
 #include "DetourPathQueue.h"
+// add by iceguan
+#include "DetourProximityDatabase.h"
+#include "DetourConvexObstacle.h"
+// end
 
 /// The maximum number of neighbors that a crowd agent can take into account
 /// for steering decisions.
@@ -202,6 +206,10 @@ struct dtCrowdAgentDebugInfo
 /// @ingroup crowd
 class dtCrowd
 {
+	// add by iceguan
+	TConvexObstacleProximityDatabase* m_convexObstacles;
+	// end
+
 	int m_maxAgents;
 	dtCrowdAgent* m_agents;
 	dtCrowdAgent** m_activeAgents;
@@ -240,6 +248,10 @@ class dtCrowd
 public:
 	dtCrowd();
 	~dtCrowd();
+
+	// add by icgeuan
+	void setConvexObstacleProximityDatabase(TConvexObstacleProximityDatabase* database) { m_convexObstacles = database; }
+	// end
 	
 	/// Initializes the crowd.  
 	///  @param[in]		maxAgents		The maximum number of agents the crowd can manage. [Limit: >= 1]

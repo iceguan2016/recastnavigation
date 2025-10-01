@@ -340,7 +340,10 @@ dtCrowd::dtCrowd() :
 	m_maxPathResult(0),
 	m_maxAgentRadius(0),
 	m_velocitySampleCount(0),
-	m_navquery(0)
+	m_navquery(0),
+	// add by iceguan
+	m_convexObstacles(0)
+	// end
 {
 }
 
@@ -374,6 +377,10 @@ void dtCrowd::purge()
 	
 	dtFreeNavMeshQuery(m_navquery);
 	m_navquery = 0;
+
+	// add by iceguan
+	m_convexObstacles = 0;
+	// end
 }
 
 /// @par
@@ -1282,6 +1289,27 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 					continue;
 				m_obstacleQuery->addSegment(s, s+3);
 			}
+
+			// add by iceguan
+			// Append convex obstacle boundary segments
+			if (m_convexObstacles)
+			{
+				const float queryObstacleRadius = 6.0f;
+				m_convexObstacles->ForeachByRadius(ag->npos, queryObstacleRadius, [&](const TConvexObstaclePtr& obs)->bool {
+					if (obs->Eval(ag->npos, queryObstacleRadius))
+					{
+						obs->ForeachSegement([&](const float* p0, const float* p1)->bool {
+							if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
+							{
+								m_obstacleQuery->addSegment(p0, p1);
+							}
+							return true;
+						});
+					}
+					return true;
+				});
+			}
+			// end
 
 			dtObstacleAvoidanceDebugData* vod = 0;
 			if (debugIdx == i) 
