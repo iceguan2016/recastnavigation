@@ -1531,3 +1531,16 @@ void Sample_TempObstacles::loadAll(const char* path)
 	
 	fclose(fp);
 }
+
+// add by iceguan
+int BoxObstacleManager::AddBoxObstacle(const float* pos, const float* extent)
+{
+	return 0;
+}
+
+void BoxObstacleManager::RemoveBoxObstacle(int handle)
+{
+
+}
+
+// end

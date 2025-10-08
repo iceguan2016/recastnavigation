@@ -90,6 +90,6 @@ protected:
 };
 
 typedef dtConvexObstacle* TConvexObstaclePtr;
-typedef dtProximityDatabase<TConvexObstaclePtr> TConvexObstacleProximityDatabase;
+typedef dtLocalityProximityDatabase<TConvexObstaclePtr> TConvexObstacleProximityDatabase;
 
 #endif//DETOURCONVEXOBSTACLE_H

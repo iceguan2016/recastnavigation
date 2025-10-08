@@ -24,6 +24,39 @@
 #include "Recast.h"
 #include "ChunkyTriMesh.h"
 
+// add by iceguan
+#include "DetourConvexObstacle.h"
+
+#include <vector>
+#include <list>
+#include <map>
+#include <memory>
+
+class BoxObstacleManager : public dtLocalityProximityDatabase<TConvexObstaclePtr>
+{
+
+public:
+	class BoxObstacleToken : public TTokenForProximityDatabase
+	{
+		friend class BoxObstacleManager;
+
+		int index = -1;
+	};
+
+	int AddBoxObstacle(const float* pos, const float* extent);
+	void RemoveBoxObstacle(int handle);
+
+protected:
+	using TBoxObstaclePtr = std::shared_ptr<dtBoxObstacle>;
+	using TBoxObsatcleTokenPtr = std::shared_ptr<BoxObstacleToken>;
+
+	std::vector<TBoxObstaclePtr> m_boxObstacles;
+	// mapping
+	std::map<int, int> m_token2BoxObstacles;
+	std::map<int, int> m_boxObstacle2Tokens;
+};
+// end
+
 
 class Sample_TempObstacles : public Sample
 {
