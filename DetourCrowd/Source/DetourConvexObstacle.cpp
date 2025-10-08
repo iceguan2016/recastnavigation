@@ -204,9 +204,8 @@ bool dtBoxObstacle::ContactResultWithCircle(const float* c, const float r, dtCon
 	return true;
 }
 
-void dtBoxObstacle::Tick(float dt) const
+void dtBoxObstacle::Tick(float dt)
 {
-
 }
 
 int dtBoxObstacle::SegmentNum() const

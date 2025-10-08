@@ -1388,6 +1388,16 @@ void Sample_TempObstacles::handleUpdate(const float dt)
 		return;
 	
 	m_tileCache->update(dt, m_navMesh);
+
+	// add by iceguan
+	if (m_obstacles)
+	{
+		m_obstacles->ForeachAllMut([dt](TConvexObstaclePtr& obs)->bool {
+			obs->Tick(dt);
+			return false;
+		});
+	}
+	// end
 }
 
 void Sample_TempObstacles::getTilePos(const float* pos, int& tx, int& ty)
@@ -1559,13 +1569,64 @@ static float frand()
 	return (float)rand() / (float)RAND_MAX;
 }
 
+static float frand_range(const float min, const float max)
+{
+	return min + (max - min) * frand();
+}
+
 void Sample_TempObstacles::addBoxObstacle(const float* pos)
 {
-	if (m_obstacles)
+	if (m_obstacles && m_navQuery)
 	{
-		float extent[3] = { 1.0f, 1.0f, 1.0f };
-		float angle = frand() * 6.28f;
-		m_obstacles->AddBoxObstacle(pos, extent, angle);
+		float extent[3] = { frand_range(1.0f, 3.0f), 1.0f, frand_range(1.0f, 3.0f) };
+		float angle = frand_range(0.0f, 6.28f);
+		float angular_speed = frand_range(0.0f, 1.0f);
+
+		float linear_speed = frand_range(0.0f, 2.0f);
+		float move_time = frand_range(1.0f, 3.0f);
+
+		if (linear_speed > 0)
+		{
+			const float s = dtMathSinf(angle);
+			const float c = dtMathCosf(angle);
+			float move_dir[3] = { c, 0, -s };
+
+			float polyPickExt[3] = { 0.5f, 1.0f, 0.5f };
+
+			float rayEnd[3];
+			dtVmad(rayEnd, pos, move_dir, linear_speed * move_time);
+
+			dtQueryFilter filter;
+			dtPolyRef startRef = 0;
+			bool isAdd = false;
+			float dest[3] = { 0.0f, 0.0f, 0.0f };
+			if (dtStatusSucceed(m_navQuery->findNearestPoly(pos, polyPickExt, &filter, &startRef, 0)))
+			{
+				dtRaycastHit hit;
+				if (dtStatusSucceed(m_navQuery->raycast(startRef, pos, rayEnd, &filter, 0, &hit)))
+				{
+					
+					if (hit.t < FLT_MAX)
+					{
+						float d[3];
+						dtVsub(d, rayEnd, pos);
+						dtVmad(dest, pos, d, hit.t);
+					}
+					else
+					{
+						dtVcopy(dest, rayEnd);
+					}
+					m_obstacles->AddBoxObstacle(pos, extent, angle, angular_speed, dest, linear_speed);
+					isAdd = true;
+				}
+			}
+
+			if (!isAdd)
+			{
+				m_obstacles->AddBoxObstacle(pos, extent, angle, angular_speed, dest, 0.0f);
+			}
+		}
+		
 	}
 }
 
@@ -1575,7 +1636,7 @@ void Sample_TempObstacles::removeBoxObstacle(const float* sp, const float* sq)
 }
 
 // BoxObstacle
-void BoxObstacle::RotateYAngle(const float yangle)
+void DynamicBoxObstacle::RotateYAngle(const float yangle)
 {
 	const float s = dtMathSinf(yangle);
 	const float c = dtMathCosf(yangle);
@@ -1593,12 +1654,12 @@ void BoxObstacle::RotateYAngle(const float yangle)
 	dtVcopy(worldAxis[2], new_z);
 }
 
-void BoxObstacle::MoveDelta(const float* delta)
+void DynamicBoxObstacle::MoveDelta(const float* delta)
 {
 	dtVadd(worldCenter, worldCenter, delta);
 }
 
-void BoxObstacle::DrawGizmos(dtGizmosDrawable& drawable)
+void DynamicBoxObstacle::DrawGizmos(dtGizmosDrawable& drawable)
 {
 	float local_vertices[8][3], world_vertices[8][3];
 
@@ -1636,17 +1697,82 @@ void BoxObstacle::DrawGizmos(dtGizmosDrawable& drawable)
 	drawable.DrawLine(world_vertices[1], world_vertices[5], color);
 	drawable.DrawLine(world_vertices[2], world_vertices[6], color);
 	drawable.DrawLine(world_vertices[3], world_vertices[7], color);
+
+	// draw move start and end point
+	if (move_speed > 0)
+	{
+		float offset[3] = { 0.0f, 0.3f, 0.0f };
+		float start[3], end[3];
+
+		dtVadd(start, move_start, offset);
+		dtVadd(end, move_end, offset);
+
+		dtGizmosColor line_col(255, 0, 0, 255);
+		drawable.DrawLine(start, end, line_col);
+	}
+}
+
+void DynamicBoxObstacle::Tick(float dt)
+{
+	Super::Tick(dt);
+
+	if (angular_speed > 0)
+	{
+		RotateYAngle(angular_speed * dt);
+	}
+
+	if (move_speed > 0)
+	{
+		float dest[3];
+		if (move_dir > 0)
+		{
+			dtVcopy(dest, move_end);
+		}
+		else
+		{
+			dtVcopy(dest, move_start);
+		}
+
+		float d[3];
+		dtVsub(d, move_end, move_start);
+		dtVnormalize(d);
+		dtVscale(d, d, move_dir * move_speed * dt);
+
+		float v[3];
+		dtVsub(v, worldCenter, dest);
+		if (dtVdot(d, v) >= 0)
+		{
+			move_dir = -move_dir;
+		}
+		else
+		{
+			
+			MoveDelta(d);
+		}
+	}
 }
 
 // BoxObstacleManager
 BoxObstacleManager::TTokenForProximityDatabase* 
-BoxObstacleManager::AddBoxObstacle(const float* pos, const float* extent, const float yangle)
+BoxObstacleManager::AddBoxObstacle(
+	const float* pos, 
+	const float* extent, 
+	const float yangle,
+	const float angular_speed,
+	const float* move_dest,
+	const float move_speed)
 {
-	auto box = TBoxObstaclePtr(new BoxObstacle());
+	auto box = TBoxObstaclePtr(new DynamicBoxObstacle());
 	dtVcopy(box->localExtent, extent);
 	dtVcopy(box->worldCenter, pos);
 
 	box->RotateYAngle(yangle);
+	box->angular_speed = angular_speed;
+
+	dtVcopy(box->move_start, pos);
+	dtVcopy(box->move_end, move_dest);
+	box->move_speed = move_speed;
+
 	m_boxObstacles.push_back(box);
 
 	auto token = AllocToken(box.get());

@@ -59,7 +59,7 @@ public:
 	virtual bool	ContactEvaluateWithCircle(const float* c, const float r, const float h) const = 0;
 	virtual bool	ContactResultWithCircle(const float* c, const float r, dtContactInfo& contact) const = 0;
 
-	virtual void	Tick(float dt) const = 0;
+	virtual void	Tick(float dt) = 0;
 	virtual int		SegmentNum() const = 0;
 	virtual void	ForeachSegement(TCallback func) const = 0;
 
@@ -83,7 +83,7 @@ public:
 	// shape0: Box, shape1: Circle
 	virtual bool	ContactResultWithCircle(const float* c, const float r, dtContactInfo& contact) const override;
 
-	virtual void	Tick(float dt) const override;
+	virtual void	Tick(float dt) override;
 	virtual int		SegmentNum() const override;
 	virtual void	ForeachSegement(TCallback func) const override;
 

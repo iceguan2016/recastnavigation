@@ -49,13 +49,24 @@ protected:
 	SampleDebugDraw* m_dd;
 };
 
-class BoxObstacle : public dtBoxObstacle
+class DynamicBoxObstacle : public dtBoxObstacle
 {
 public:
+	typedef dtBoxObstacle Super;
+
 	void RotateYAngle(const float yangle);
 	void MoveDelta(const float* delta);
 
 	void DrawGizmos(dtGizmosDrawable& drawable);
+
+	void Tick(float dt) override;
+
+public:
+	float angular_speed = 0.0f;
+	float move_start[3];
+	float move_end[3];
+	float move_dir = 1.0f;
+	float move_speed = 0.0f;
 };
 
 class BoxObstacleManager : public dtLocalityProximityDatabase<TConvexObstaclePtr>
@@ -63,13 +74,19 @@ class BoxObstacleManager : public dtLocalityProximityDatabase<TConvexObstaclePtr
 public:
 	typedef dtLocalityProximityDatabase<TConvexObstaclePtr> Super;
 
-	TTokenForProximityDatabase* AddBoxObstacle(const float* pos, const float* extent, const float yangle);
+	TTokenForProximityDatabase* AddBoxObstacle(
+		const float* pos, 
+		const float* extent, 
+		const float yangle,
+		const float angular_speed,
+		const float* move_dir,
+		const float move_speed);
 	void RemoveBoxObstacle(TTokenForProximityDatabase* token);
 
 	void DrawGizmos(dtGizmosDrawable& drawable) override;
 
 protected:
-	using TBoxObstaclePtr = std::shared_ptr<BoxObstacle>;
+	using TBoxObstaclePtr = std::shared_ptr<DynamicBoxObstacle>;
 
 	std::vector<TBoxObstaclePtr> m_boxObstacles;
 };
