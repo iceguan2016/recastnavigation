@@ -1533,14 +1533,37 @@ void Sample_TempObstacles::loadAll(const char* path)
 }
 
 // add by iceguan
-int BoxObstacleManager::AddBoxObstacle(const float* pos, const float* extent)
+BoxObstacleManager::TTokenForProximityDatabase* 
+BoxObstacleManager::AddBoxObstacle(const float* pos, const float* extent)
 {
-	return 0;
+	auto box = TBoxObstaclePtr(new dtBoxObstacle());
+	box->localExtent[0] = 1.0f;
+	box->localExtent[1] = 1.0f;
+	box->localExtent[2] = 1.0f;
+
+	dtVcopy(box->worldCenter, pos);
+
+	m_boxObstacles.push_back(box);
+
+	auto token = AllocToken(box.get());
+	dtAssert(token);
+	UpdateForNewLocation(*token, pos);
+	return token;
 }
 
-void BoxObstacleManager::RemoveBoxObstacle(int handle)
+void BoxObstacleManager::RemoveBoxObstacle(TTokenForProximityDatabase* token)
 {
+	dtAssert(token && token->proxy && token->proxy->obj);
 
+	auto obj = token->proxy->obj;
+	auto obj_iter = std::find_if(
+		m_boxObstacles.begin(), 
+		m_boxObstacles.end(), 
+		[obj](const TBoxObstaclePtr& item) { return item.get() == obj; });
+	dtAssert(obj_iter != m_boxObstacles.end());
+	m_boxObstacles.erase(obj_iter);
+
+	FreeToken(token);
 }
 
 // end

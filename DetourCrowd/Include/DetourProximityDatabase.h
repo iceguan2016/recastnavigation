@@ -23,6 +23,7 @@ template <typename TDataType, typename TPayload>
 class dtTokenForProximityDatabase
 {
 public:
+	using TData = TDataType;
 	using TProximityDatabase = dtProximityDatabase<TDataType, TPayload>;
 
 	virtual ~dtTokenForProximityDatabase() {}

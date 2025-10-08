@@ -68,7 +68,7 @@ public:
 	bool LocalToWorldDirection(float* dest, const float* v) const;
 	bool WorldToLocalDirection(float* dest, const float* v) const;
 
-protected:
+public:
 	float worldCenter[3];
 	float worldAxis[3][3];
 	float worldAabb[2][3];
@@ -85,7 +85,7 @@ public:
 	virtual int		SegmentNum() const override;
 	virtual void	ForeachSegement(TCallback func) const override;
 
-protected:
+public:
 	float localExtent[3];
 };
 

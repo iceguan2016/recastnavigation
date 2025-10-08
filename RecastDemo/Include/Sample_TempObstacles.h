@@ -36,24 +36,13 @@ class BoxObstacleManager : public dtLocalityProximityDatabase<TConvexObstaclePtr
 {
 
 public:
-	class BoxObstacleToken : public TTokenForProximityDatabase
-	{
-		friend class BoxObstacleManager;
-
-		int index = -1;
-	};
-
-	int AddBoxObstacle(const float* pos, const float* extent);
-	void RemoveBoxObstacle(int handle);
+	TTokenForProximityDatabase* AddBoxObstacle(const float* pos, const float* extent);
+	void RemoveBoxObstacle(TTokenForProximityDatabase* token);
 
 protected:
 	using TBoxObstaclePtr = std::shared_ptr<dtBoxObstacle>;
-	using TBoxObsatcleTokenPtr = std::shared_ptr<BoxObstacleToken>;
 
 	std::vector<TBoxObstaclePtr> m_boxObstacles;
-	// mapping
-	std::map<int, int> m_token2BoxObstacles;
-	std::map<int, int> m_boxObstacle2Tokens;
 };
 // end
 
