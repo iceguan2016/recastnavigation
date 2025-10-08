@@ -1552,12 +1552,19 @@ void Sample_TempObstacles::loadAll(const char* path)
 
 // add by iceguan
 
+// Returns a random number [0..1]
+static float frand()
+{
+	//	return ((float)(rand() & 0xffff)/(float)0xffff);
+	return (float)rand() / (float)RAND_MAX;
+}
+
 void Sample_TempObstacles::addBoxObstacle(const float* pos)
 {
 	if (m_obstacles)
 	{
 		float extent[3] = { 1.0f, 1.0f, 1.0f };
-		float angle = 0.0f;
+		float angle = frand() * 6.28f;
 		m_obstacles->AddBoxObstacle(pos, extent, angle);
 	}
 }
@@ -1570,52 +1577,65 @@ void Sample_TempObstacles::removeBoxObstacle(const float* sp, const float* sq)
 // BoxObstacle
 void BoxObstacle::RotateYAngle(const float yangle)
 {
+	const float s = dtMathSinf(yangle);
+	const float c = dtMathCosf(yangle);
+	
+	float new_x[3], new_z[3];
+	new_x[0] = worldAxis[0][0] * c + worldAxis[0][2] * s;
+	new_x[1] = worldAxis[0][1];
+	new_x[2] = -worldAxis[0][0] * s + worldAxis[0][2] * c;
 
+	new_z[0] = worldAxis[2][0] * c + worldAxis[2][2] * s;
+	new_z[1] = worldAxis[2][1];
+	new_z[2] = -worldAxis[2][0] * s + worldAxis[2][2] * c;
+
+	dtVcopy(worldAxis[0], new_x);
+	dtVcopy(worldAxis[2], new_z);
 }
 
 void BoxObstacle::MoveDelta(const float* delta)
 {
-
+	dtVadd(worldCenter, worldCenter, delta);
 }
 
 void BoxObstacle::DrawGizmos(dtGizmosDrawable& drawable)
 {
-	float vertices[8][3];
+	float local_vertices[8][3], world_vertices[8][3];
 
 	float halfExtent[3];
 
 	dtVscale(halfExtent, localExtent, 0.5f);
-	dtVset(vertices[0], -halfExtent[0], -halfExtent[1], -halfExtent[2]);
-	dtVset(vertices[1],  halfExtent[0], -halfExtent[1], -halfExtent[2]);
-	dtVset(vertices[2],  halfExtent[0], -halfExtent[1],  halfExtent[2]);
-	dtVset(vertices[3], -halfExtent[0], -halfExtent[1],  halfExtent[2]);
+	dtVset(local_vertices[0], -halfExtent[0], -halfExtent[1], -halfExtent[2]);
+	dtVset(local_vertices[1],  halfExtent[0], -halfExtent[1], -halfExtent[2]);
+	dtVset(local_vertices[2],  halfExtent[0], -halfExtent[1],  halfExtent[2]);
+	dtVset(local_vertices[3], -halfExtent[0], -halfExtent[1],  halfExtent[2]);
 
-	dtVset(vertices[4], -halfExtent[0], halfExtent[1], -halfExtent[2]);
-	dtVset(vertices[5],  halfExtent[0], halfExtent[1], -halfExtent[2]);
-	dtVset(vertices[6],  halfExtent[0], halfExtent[1],  halfExtent[2]);
-	dtVset(vertices[7], -halfExtent[0], halfExtent[1],  halfExtent[2]);
+	dtVset(local_vertices[4], -halfExtent[0], halfExtent[1], -halfExtent[2]);
+	dtVset(local_vertices[5],  halfExtent[0], halfExtent[1], -halfExtent[2]);
+	dtVset(local_vertices[6],  halfExtent[0], halfExtent[1],  halfExtent[2]);
+	dtVset(local_vertices[7], -halfExtent[0], halfExtent[1],  halfExtent[2]);
 
 	for (int i = 0; i < 8; ++i)
 	{
-		LocalToWorldPosition(vertices[i], vertices[i]);
+		LocalToWorldPosition(world_vertices[i], local_vertices[i]);
 	}
 
-	auto color = dtGizmosColor(0, 0, 255, 0);
+	auto color = dtGizmosColor(0, 0, 255, 255);
 
-	drawable.DrawLine(vertices[0], vertices[1], color);
-	drawable.DrawLine(vertices[1], vertices[2], color);
-	drawable.DrawLine(vertices[2], vertices[3], color);
-	drawable.DrawLine(vertices[3], vertices[0], color);
+	drawable.DrawLine(world_vertices[0], world_vertices[1], color);
+	drawable.DrawLine(world_vertices[1], world_vertices[2], color);
+	drawable.DrawLine(world_vertices[2], world_vertices[3], color);
+	drawable.DrawLine(world_vertices[3], world_vertices[0], color);
 
-	drawable.DrawLine(vertices[4], vertices[5], color);
-	drawable.DrawLine(vertices[5], vertices[6], color);
-	drawable.DrawLine(vertices[6], vertices[7], color);
-	drawable.DrawLine(vertices[7], vertices[4], color);
+	drawable.DrawLine(world_vertices[4], world_vertices[5], color);
+	drawable.DrawLine(world_vertices[5], world_vertices[6], color);
+	drawable.DrawLine(world_vertices[6], world_vertices[7], color);
+	drawable.DrawLine(world_vertices[7], world_vertices[4], color);
 
-	drawable.DrawLine(vertices[0], vertices[4], color);
-	drawable.DrawLine(vertices[1], vertices[5], color);
-	drawable.DrawLine(vertices[2], vertices[6], color);
-	drawable.DrawLine(vertices[3], vertices[7], color);
+	drawable.DrawLine(world_vertices[0], world_vertices[4], color);
+	drawable.DrawLine(world_vertices[1], world_vertices[5], color);
+	drawable.DrawLine(world_vertices[2], world_vertices[6], color);
+	drawable.DrawLine(world_vertices[3], world_vertices[7], color);
 }
 
 // BoxObstacleManager
