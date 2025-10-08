@@ -7,13 +7,30 @@
 
 #include "DetourAssert.h"
 
+struct dtGizmosColor
+{
+	unsigned char r, g, b, a;
+
+	dtGizmosColor(
+		unsigned char r, 
+		unsigned char g, 
+		unsigned char b, 
+		unsigned char a)
+	{
+		this->r = r;
+		this->g = g;
+		this->b = b;
+		this->a = a;
+	}
+};
+
 class dtGizmosDrawable
 {
 public:
 	virtual ~dtGizmosDrawable() {}
 
-	virtual void DrawLine(const float* start, const float* end) = 0;
-	virtual void DrawAabb(const float* aabb_min, const float* aabb_max) = 0;
+	virtual void DrawLine(const float* start, const float* end, const dtGizmosColor& color) = 0;
+	virtual void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color) = 0;
 };
 
 template <typename TDataType, typename TTokenPayload>
@@ -119,6 +136,7 @@ struct dtLocalityClientProxy
 		next = 0;
 		bin = -1;
 		this->obj = obj;
+		dtVset(position, 0.0f, 0.0f, 0.0f);
 	}
 };
 
@@ -211,6 +229,48 @@ public:
 
 	void DrawGizmos(dtGizmosDrawable& drawable) override
 	{
+		auto slab = div_y * div_z;
+		auto row = div_z;
+
+		float bin_size[3] = { size[0] / div_x, size[1] / div_y, size[2] / div_z };
+
+		float bin_scale = 0.95f;
+		float sacled_half_bin_size[3];
+		dtVscale(sacled_half_bin_size, bin_size, bin_scale / 2);
+
+		/* loop for x bins across diameter of sphere */
+		int iindex = 0;
+		for (int i = 0; i < div_x; ++i) 
+		{
+			/* loop for y bins across diameter of sphere */
+			int jindex = 0;
+			for (int j = 0; j < div_y; ++j) 
+			{
+				/* loop for z bins across diameter of sphere */
+				int kindex = 0;
+				for (int k = 0; k < div_z; ++k)
+				{
+					/* get current bin's client obj list */
+					auto bin = bins[iindex + jindex + kindex];
+					auto is_empty = bin == 0;
+
+					float min[3] = { origin[0] + bin_size[0] * i, origin[1] + bin_size[1] * j, origin[2] + bin_size[2] * k };
+					float max[3];
+					dtVadd(max, min, bin_size);
+
+					float center[3] = { (max[0] + min[0]) * 0.5f, (max[1] + min[1]) * 0.5f, (max[2] + min[2]) * 0.5f};
+					dtVsub(min, center, sacled_half_bin_size);
+					dtVadd(max, center, sacled_half_bin_size);
+
+					auto color = is_empty? dtGizmosColor(255, 255, 0, 255) : dtGizmosColor(255, 0, 0, 255);
+					drawable.DrawAabb(min, max, color);
+
+					kindex += 1;
+				}
+				jindex += row;
+			}
+			iindex += slab;
+		}
 	}
 
 	static Self* Create(
@@ -229,14 +289,15 @@ public:
 		data_base->div_y = divy;
 		data_base->div_z = divz;
 
-		bin_count = divx * divy * divz + 1;
-		data_base->bins = new T[bin_count];
+		int bin_count = divx * divy * divz + 1;
+		data_base->bins = new TClentProxy*[bin_count];
 		for (int i = 0; i < bin_count; ++i)
 		{
 			data_base->bins[i] = 0;
 		}
+		data_base->bin_count = bin_count;
 
-		return data_base
+		return data_base;
 	}
 
 	dtLocalityProximityDatabase()
@@ -273,7 +334,7 @@ protected:
 	{
 		float min[3], max[3];
 		dtVcopy(min, origin);
-		dtVmad(max, origin, size, 1.0f);
+		dtVadd(max, origin, size);
 		/* if point outside super-brick, return the "other" bin */
 		if (position[0] < min[0]
 			|| position[1] < min[1]
@@ -458,11 +519,11 @@ protected:
 		float min[3], max[3];
 		float half_extent[3] = { radius, radius, radius };
 		dtVsub(min, center, half_extent);
-		dtVmad(max, center, half_extent, 1.0f);
+		dtVadd(max, center, half_extent);
 
 		float bound_min[3], bound_max[3];
 		dtVcopy(bound_min, origin);
-		dtVmad(bound_max, origin, size, 1.0f);
+		dtVadd(bound_max, origin, size);
 		auto completely_outside = (max[0] < bound_min[0])
 			|| (max[1] < bound_min[1])
 			|| (max[2] < bound_min[2])

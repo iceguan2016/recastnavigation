@@ -32,15 +32,44 @@
 #include <map>
 #include <memory>
 
-class BoxObstacleManager : public dtLocalityProximityDatabase<TConvexObstaclePtr>
+class GizmosDrawable : public dtGizmosDrawable
 {
 
 public:
-	TTokenForProximityDatabase* AddBoxObstacle(const float* pos, const float* extent);
-	void RemoveBoxObstacle(TTokenForProximityDatabase* token);
+	GizmosDrawable(SampleDebugDraw* dd)
+		: m_dd(dd)
+	{
+	}
+
+	void DrawLine(const float* start, const float* end, const dtGizmosColor& color) override;
+
+	void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color) override;
 
 protected:
-	using TBoxObstaclePtr = std::shared_ptr<dtBoxObstacle>;
+	SampleDebugDraw* m_dd;
+};
+
+class BoxObstacle : public dtBoxObstacle
+{
+public:
+	void RotateYAngle(const float yangle);
+	void MoveDelta(const float* delta);
+
+	void DrawGizmos(dtGizmosDrawable& drawable);
+};
+
+class BoxObstacleManager : public dtLocalityProximityDatabase<TConvexObstaclePtr>
+{
+public:
+	typedef dtLocalityProximityDatabase<TConvexObstaclePtr> Super;
+
+	TTokenForProximityDatabase* AddBoxObstacle(const float* pos, const float* extent, const float yangle);
+	void RemoveBoxObstacle(TTokenForProximityDatabase* token);
+
+	void DrawGizmos(dtGizmosDrawable& drawable) override;
+
+protected:
+	using TBoxObstaclePtr = std::shared_ptr<BoxObstacle>;
 
 	std::vector<TBoxObstaclePtr> m_boxObstacles;
 };
@@ -82,6 +111,10 @@ protected:
 	int m_maxTiles;
 	int m_maxPolysPerTile;
 	float m_tileSize;
+
+	// add by iceguan
+	BoxObstacleManager* m_obstacles;
+	// end
 	
 public:
 	Sample_TempObstacles();
@@ -107,6 +140,9 @@ public:
 
 	void saveAll(const char* path);
 	void loadAll(const char* path);
+
+	void addBoxObstacle(const float* pos);
+	void removeBoxObstacle(const float* sp, const float* sq);
 
 private:
 	// Explicitly disabled copy constructor and copy assignment operator.

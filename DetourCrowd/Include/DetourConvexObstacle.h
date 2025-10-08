@@ -77,6 +77,8 @@ public:
 class dtBoxObstacle : public dtConvexObstacle
 {
 public:
+	static void box_local_vertices_and_normals(const float* extent, float out_vertices[4][3], float out_normals[4][3]);
+
 	virtual bool	ContactEvaluateWithCircle(const float* c, const float r, const float h) const override;
 	// shape0: Box, shape1: Circle
 	virtual bool	ContactResultWithCircle(const float* c, const float r, dtContactInfo& contact) const override;

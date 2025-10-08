@@ -36,22 +36,6 @@ bool intersection_circles(
 	}
 }
 
-void box_local_vertices_and_normals(const float* extent, float out_vertices[4][3], float out_normals[4][3])
-{
-	float halfExtent[3];
-
-	dtVscale(halfExtent, extent, 0.5f);
-	dtVset(out_vertices[0], -halfExtent[0], 0.0f, -halfExtent[2]);
-	dtVset(out_vertices[1], halfExtent[0], 0.0f, -halfExtent[2]);
-	dtVset(out_vertices[2], halfExtent[0], 0.0f, halfExtent[2]);
-	dtVset(out_vertices[3], -halfExtent[0], 0.0f, halfExtent[2]);
-
-	dtVset(out_normals[0], 0.0f, -1.0f, 0.0f);
-	dtVset(out_normals[1], 1.0f, 0.0f, 0.0f);
-	dtVset(out_normals[2], 0.0f, 1.0f, 0.0f);
-	dtVset(out_normals[3], -1.0f, 0.0f, 0.0f);
-}
-
 bool dtConvexObstacle::LocalToWorldPosition(float* dest, const float* p) const
 {
 	dtVmad(dest, worldCenter, worldAxis[0], p[0]);
@@ -87,6 +71,22 @@ bool dtConvexObstacle::WorldToLocalDirection(float* dest, const float* v) const
 	dest[2] = dtVdot(v, worldAxis[2]);
 	dtVnormalize(dest);
 	return true;
+}
+
+void dtBoxObstacle::box_local_vertices_and_normals(const float* extent, float out_vertices[4][3], float out_normals[4][3])
+{
+	float halfExtent[3];
+
+	dtVscale(halfExtent, extent, 0.5f);
+	dtVset(out_vertices[0], -halfExtent[0], 0.0f, -halfExtent[2]);
+	dtVset(out_vertices[1], halfExtent[0], 0.0f, -halfExtent[2]);
+	dtVset(out_vertices[2], halfExtent[0], 0.0f, halfExtent[2]);
+	dtVset(out_vertices[3], -halfExtent[0], 0.0f, halfExtent[2]);
+
+	dtVset(out_normals[0], 0.0f, -1.0f, 0.0f);
+	dtVset(out_normals[1], 1.0f, 0.0f, 0.0f);
+	dtVset(out_normals[2], 0.0f, 1.0f, 0.0f);
+	dtVset(out_normals[3], -1.0f, 0.0f, 0.0f);
 }
 
 bool dtBoxObstacle::ContactEvaluateWithCircle(const float* c, const float r, const float h) const

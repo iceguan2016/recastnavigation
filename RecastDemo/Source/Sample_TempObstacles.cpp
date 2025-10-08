@@ -808,7 +808,10 @@ public:
 			if (shift)
 				m_sample->removeTempObstacle(s,p);
 			else
+			{
 				m_sample->addTempObstacle(p);
+				m_sample->addBoxObstacle(p);
+			}
 		}
 	}
 	
@@ -843,6 +846,10 @@ Sample_TempObstacles::Sample_TempObstacles() :
 	m_tmproc = new MeshProcess;
 	
 	setTool(new TempObstacleCreateTool);
+
+	// add by iceguan
+	m_obstacles = new BoxObstacleManager();
+	// end
 }
 
 Sample_TempObstacles::~Sample_TempObstacles()
@@ -1086,6 +1093,13 @@ void Sample_TempObstacles::handleRender()
 			duDebugDrawNavMeshNodes(&m_dd, *m_navQuery);
 		duDebugDrawNavMeshPolysWithFlags(&m_dd, *m_navMesh, SAMPLE_POLYFLAGS_DISABLED, duRGBA(0,0,0,128));
 	}
+
+	// draw obstacles
+	if (m_obstacles)
+	{
+		auto drawable = GizmosDrawable(&m_dd);
+		m_obstacles->DrawGizmos(drawable);
+	}
 	
 	
 	glDepthMask(GL_TRUE);
@@ -1163,6 +1177,8 @@ void Sample_TempObstacles::handleMeshChanged(class InputGeom* geom)
 
 void Sample_TempObstacles::addTempObstacle(const float* pos)
 {
+	return;
+
 	if (!m_tileCache)
 		return;
 	float p[3];
@@ -1173,6 +1189,8 @@ void Sample_TempObstacles::addTempObstacle(const float* pos)
 
 void Sample_TempObstacles::removeTempObstacle(const float* sp, const float* sq)
 {
+	return;
+
 	if (!m_tileCache)
 		return;
 	dtObstacleRef ref = hitTestObstacle(m_tileCache, sp, sq);
@@ -1533,16 +1551,82 @@ void Sample_TempObstacles::loadAll(const char* path)
 }
 
 // add by iceguan
-BoxObstacleManager::TTokenForProximityDatabase* 
-BoxObstacleManager::AddBoxObstacle(const float* pos, const float* extent)
-{
-	auto box = TBoxObstaclePtr(new dtBoxObstacle());
-	box->localExtent[0] = 1.0f;
-	box->localExtent[1] = 1.0f;
-	box->localExtent[2] = 1.0f;
 
+void Sample_TempObstacles::addBoxObstacle(const float* pos)
+{
+	if (m_obstacles)
+	{
+		float extent[3] = { 1.0f, 1.0f, 1.0f };
+		float angle = 0.0f;
+		m_obstacles->AddBoxObstacle(pos, extent, angle);
+	}
+}
+
+void Sample_TempObstacles::removeBoxObstacle(const float* sp, const float* sq)
+{
+
+}
+
+// BoxObstacle
+void BoxObstacle::RotateYAngle(const float yangle)
+{
+
+}
+
+void BoxObstacle::MoveDelta(const float* delta)
+{
+
+}
+
+void BoxObstacle::DrawGizmos(dtGizmosDrawable& drawable)
+{
+	float vertices[8][3];
+
+	float halfExtent[3];
+
+	dtVscale(halfExtent, localExtent, 0.5f);
+	dtVset(vertices[0], -halfExtent[0], -halfExtent[1], -halfExtent[2]);
+	dtVset(vertices[1],  halfExtent[0], -halfExtent[1], -halfExtent[2]);
+	dtVset(vertices[2],  halfExtent[0], -halfExtent[1],  halfExtent[2]);
+	dtVset(vertices[3], -halfExtent[0], -halfExtent[1],  halfExtent[2]);
+
+	dtVset(vertices[4], -halfExtent[0], halfExtent[1], -halfExtent[2]);
+	dtVset(vertices[5],  halfExtent[0], halfExtent[1], -halfExtent[2]);
+	dtVset(vertices[6],  halfExtent[0], halfExtent[1],  halfExtent[2]);
+	dtVset(vertices[7], -halfExtent[0], halfExtent[1],  halfExtent[2]);
+
+	for (int i = 0; i < 8; ++i)
+	{
+		LocalToWorldPosition(vertices[i], vertices[i]);
+	}
+
+	auto color = dtGizmosColor(0, 0, 255, 0);
+
+	drawable.DrawLine(vertices[0], vertices[1], color);
+	drawable.DrawLine(vertices[1], vertices[2], color);
+	drawable.DrawLine(vertices[2], vertices[3], color);
+	drawable.DrawLine(vertices[3], vertices[0], color);
+
+	drawable.DrawLine(vertices[4], vertices[5], color);
+	drawable.DrawLine(vertices[5], vertices[6], color);
+	drawable.DrawLine(vertices[6], vertices[7], color);
+	drawable.DrawLine(vertices[7], vertices[4], color);
+
+	drawable.DrawLine(vertices[0], vertices[4], color);
+	drawable.DrawLine(vertices[1], vertices[5], color);
+	drawable.DrawLine(vertices[2], vertices[6], color);
+	drawable.DrawLine(vertices[3], vertices[7], color);
+}
+
+// BoxObstacleManager
+BoxObstacleManager::TTokenForProximityDatabase* 
+BoxObstacleManager::AddBoxObstacle(const float* pos, const float* extent, const float yangle)
+{
+	auto box = TBoxObstaclePtr(new BoxObstacle());
+	dtVcopy(box->localExtent, extent);
 	dtVcopy(box->worldCenter, pos);
 
+	box->RotateYAngle(yangle);
 	m_boxObstacles.push_back(box);
 
 	auto token = AllocToken(box.get());
@@ -1564,6 +1648,42 @@ void BoxObstacleManager::RemoveBoxObstacle(TTokenForProximityDatabase* token)
 	m_boxObstacles.erase(obj_iter);
 
 	FreeToken(token);
+}
+
+void BoxObstacleManager::DrawGizmos(dtGizmosDrawable& drawable)
+{
+	Super::DrawGizmos(drawable);
+
+	// draw box obstacle
+	for (auto& obs : m_boxObstacles)
+	{
+		obs->DrawGizmos(drawable);
+	}
+}
+
+void GizmosDrawable::DrawLine(const float* start, const float* end, const dtGizmosColor& color)
+{
+	if (m_dd)
+	{
+		const unsigned int col = duRGBA(color.r, color.g, color.b, color.a);
+
+		m_dd->begin(DU_DRAW_LINES, 2.0f);
+
+		m_dd->vertex(start, col);
+		m_dd->vertex(end, col);
+
+		m_dd->end();
+	}
+}
+
+void GizmosDrawable::DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color)
+{
+	if (m_dd)
+	{
+		const unsigned int col = duRGBA(color.r, color.g, color.b, color.a);
+
+		duDebugDrawBox(m_dd, aabb_min[0], aabb_min[1], aabb_min[2], aabb_max[0], aabb_max[1], aabb_max[2], &col);
+	}
 }
 
 // end
