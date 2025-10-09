@@ -1362,6 +1362,50 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 		}
 	}
 
+	// add by iceguan
+	
+	// Project velocity
+	if (m_convexObstacles)
+	{
+		for (int i = 0; i < nagents; ++i)
+		{
+			dtCrowdAgent* ag = agents[i];
+			if (ag->state != DT_CROWDAGENT_STATE_WALKING)
+				continue;
+
+			ag->contactNum = 0;
+			m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
+				if (obs->ContactEvaluateWithCircle(ag->npos, ag->params.radius, ag->params.height))
+				{
+					dtContactInfo contact;
+					if (obs->ContactResultWithCircle(ag->npos, ag->params.radius, contact))
+					{
+						// shape0: Box, shape1: Circle
+						float vlen = dtVlen(ag->nvel);
+						if (vlen > 0)
+						{
+							float dot = dtVdot(ag->nvel, contact.normal);
+							float vvel[3], pvel[3];
+							dtVscale(vvel, contact.normal, dot);
+							dtVsub(pvel, ag->nvel, vvel);
+							dtVnormalize(pvel);
+							dtVscale(ag->nvel, pvel, vlen);
+						}
+
+						if (ag->contactNum < dtCrowdAgent::MAX_OBSTACLE_CONTACTS)
+						{
+							ag->contacts[ag->contactNum] = contact;
+							ag->contactNum++;
+						}
+					}
+				}
+				return true;
+			});
+		}
+	}
+
+	// end
+
 	// Integrate.
 	for (int i = 0; i < nagents; ++i)
 	{
@@ -1436,10 +1480,19 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			
 			dtVadd(ag->npos, ag->npos, ag->disp);
 		}
+	}
 
-		// add by iceguan
+	// add by iceguan
+	static const float RESOLVE_OBSTACLE_COLLISION_FACTOR = 0.7f;
+	for (int i = 0; i < nagents; ++i)
+	{
+		dtCrowdAgent* ag = agents[i];
+		const int idx0 = getAgentIndex(ag);
+
+		if (ag->state != DT_CROWDAGENT_STATE_WALKING)
+			continue;
+
 		// Collision with convex obstacles
-		static const float RESOLVE_OBSTACLE_COLLISION_FACTOR = 0.7f;
 		if (m_convexObstacles)
 		{
 			for (int i = 0; i < nagents; ++i)
@@ -1450,7 +1503,6 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 
 				dtVset(ag->disp, 0, 0, 0);
 
-				if (iter == 0) ag->contactNum = 0;
 				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 					if (obs->ContactEvaluateWithCircle(ag->npos, ag->params.radius, ag->params.height))
 					{
@@ -1459,12 +1511,6 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 						{
 							// shape0: Box, shape1: Circle
 							dtVmad(ag->disp, ag->disp, contact.normal, contact.separation * RESOLVE_OBSTACLE_COLLISION_FACTOR);
-
-							if (iter == 0 && ag->contactNum < dtCrowdAgent::MAX_OBSTACLE_CONTACTS)
-							{
-								ag->contacts[ag->contactNum] = contact;
-								ag->contactNum++;
-							}
 						}
 					}
 					return true;
@@ -1477,11 +1523,13 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 				if (ag->state != DT_CROWDAGENT_STATE_WALKING)
 					continue;
 
-				dtVadd(ag->npos, ag->npos, ag->disp);
+				float tpos[3];
+				dtVadd(tpos, ag->npos, ag->disp);
+				dtVlerp(ag->npos, ag->npos, tpos, ag->params.maxSpeed*dt);
 			}
 		}
-		// end
 	}
+	// end
 	
 	for (int i = 0; i < nagents; ++i)
 	{
