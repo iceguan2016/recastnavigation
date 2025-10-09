@@ -123,6 +123,13 @@ CrowdToolState::CrowdToolState() :
 	m_toolParams.m_obstacleAvoidanceType = 3.0f;
 	m_toolParams.m_separation = false;
 	m_toolParams.m_separationWeight = 2.0f;
+
+	// add by iceguan
+	m_toolParams.m_showDynamicObstacleDebugDraw = false;
+	m_toolParams.m_showDynamicObstacleDatabaseCells = false;
+	m_toolParams.m_showDynamicObstacleSegments = false;
+	m_toolParams.m_showDynamicObstacleContacts = false;
+	// end
 	
 	memset(m_trails, 0, sizeof(m_trails));
 	
@@ -517,40 +524,57 @@ void CrowdToolState::handleRender()
 
 	// add by iceguan
 
+	if (auto obstacles = crowd->getConvexObstacleProximityDatabase())
+	{
+		// draw obstacles
+		auto drawable = GizmosDrawable(&dd);
+
+		auto toggles = dtGizmosToggles();
+		toggles.m_showCells = m_toolParams.m_showDynamicObstacleDatabaseCells;
+
+		obstacles->DrawGizmos(drawable, toggles);
+	}
+
 	for (int i = 0; i < crowd->getAgentCount(); ++i)
 	{
 		const dtCrowdAgent* ag = crowd->getAgent(i);
 		if (!ag->active) continue;
 
 		// Obstacle segments
-		for (int k = 0; k < ag->obstacleSegmentNum; ++k)
+		if (m_toolParams.m_showDynamicObstacleSegments)
 		{
-			unsigned int col = duRGBA(220, 220, 220, 192);
+			for (int k = 0; k < ag->obstacleSegmentNum; ++k)
+			{
+				unsigned int col = duRGBA(220, 220, 220, 192);
 
-			const float* p0 = ag->obstacleSegments[k][0];
-			const float* p1 = ag->obstacleSegments[k][1];
+				const float* p0 = ag->obstacleSegments[k][0];
+				const float* p1 = ag->obstacleSegments[k][1];
 
-			duDebugDrawArrow(&dd, 
-				p0[0], p0[1], p0[2],
-				p1[0], p1[1], p1[2],
-				0.0f, 0.4f, col, (m_agentDebug.idx == i) ? 3.0f : 2.0f);
+				duDebugDrawArrow(&dd,
+					p0[0], p0[1], p0[2],
+					p1[0], p1[1], p1[2],
+					0.0f, 0.4f, col, (m_agentDebug.idx == i) ? 3.0f : 2.0f);
+			}
 		}
 
 		// Obstacle contacts
-		for (int k = 0; k < ag->contactNum; ++k)
+		if (m_toolParams.m_showDynamicObstacleContacts)
 		{
-			unsigned int col = duRGBA(255, 0, 0, 255);
+			for (int k = 0; k < ag->contactNum; ++k)
+			{
+				unsigned int col = duRGBA(255, 0, 0, 255);
 
-			const auto& contact = ag->contacts[k];
-			auto p0 = contact.point;
+				const auto& contact = ag->contacts[k];
+				auto p0 = contact.point;
 
-			float p1[3];
-			dtVmad(p1, p0, contact.normal, contact.separation);
+				float p1[3];
+				dtVmad(p1, p0, contact.normal, contact.separation);
 
-			duDebugDrawArrow(&dd,
-				p0[0], p0[1], p0[2],
-				p1[0], p1[1], p1[2],
-				0.0f, 0.2f, col, 1.0f);
+				duDebugDrawArrow(&dd,
+					p0[0], p0[1], p0[2],
+					p1[0], p1[1], p1[2],
+					0.0f, 0.2f, col, 1.0f);
+			}
 		}
 	}
 
@@ -1028,6 +1052,27 @@ void CrowdTool::handleMenu()
 			params->m_showDetailAll = !params->m_showDetailAll;
 		imguiUnindent();
 	}
+
+	// add by iceguan
+	if (imguiCollapse("Show Dynamic Obstacle Debug", 0, params->m_showDynamicObstacleDebugDraw))
+		params->m_showDynamicObstacleDebugDraw = !params->m_showDynamicObstacleDebugDraw;
+	
+	if (params->m_showDynamicObstacleDebugDraw)
+	{
+		imguiIndent();
+
+		if (imguiCheck("Show Database Cells", params->m_showDynamicObstacleDatabaseCells))
+			params->m_showDynamicObstacleDatabaseCells = !params->m_showDynamicObstacleDatabaseCells;
+
+		if (imguiCheck("Show Obstacle Segments", params->m_showDynamicObstacleSegments))
+			params->m_showDynamicObstacleSegments = !params->m_showDynamicObstacleSegments;
+
+		if (imguiCheck("Show Obstacle Contacts", params->m_showDynamicObstacleContacts))
+			params->m_showDynamicObstacleContacts = !params->m_showDynamicObstacleContacts;
+
+		imguiUnindent();
+	}
+	// end
 }
 
 void CrowdTool::handleClick(const float* s, const float* p, bool shift)
@@ -1146,3 +1191,30 @@ void CrowdTool::handleRenderOverlay(double* proj, double* model, int* view)
 	else 
 		imguiDrawText(280, ty, IMGUI_ALIGN_LEFT, "- PAUSED -", imguiRGBA(255,255,255,128));	
 }
+
+// add by iceguan
+void GizmosDrawable::DrawLine(const float* start, const float* end, const dtGizmosColor& color)
+{
+	if (m_dd)
+	{
+		const unsigned int col = duRGBA(color.r, color.g, color.b, color.a);
+
+		m_dd->begin(DU_DRAW_LINES, 2.0f);
+
+		m_dd->vertex(start, col);
+		m_dd->vertex(end, col);
+
+		m_dd->end();
+	}
+}
+
+void GizmosDrawable::DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color)
+{
+	if (m_dd)
+	{
+		const unsigned int col = duRGBA(color.r, color.g, color.b, color.a);
+
+		duDebugDrawBoxWire(m_dd, aabb_min[0], aabb_min[1], aabb_min[2], aabb_max[0], aabb_max[1], aabb_max[2], col, 1.0f);
+	}
+}
+// end

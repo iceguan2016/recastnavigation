@@ -33,6 +33,11 @@ public:
 	virtual void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color) = 0;
 };
 
+struct dtGizmosToggles
+{
+	bool m_showCells = false;
+};
+
 template <typename TDataType, typename TTokenPayload>
 class dtProximityDatabase;
 
@@ -78,7 +83,7 @@ public:
 
 	virtual void UpdateForNewLocation(TTokenForProximityDatabase& token, const float* pos) = 0;
 
-	virtual void DrawGizmos(dtGizmosDrawable& drawable) = 0;
+	virtual void DrawGizmos(dtGizmosDrawable& drawable, const dtGizmosToggles& toggles) = 0;
 };
 
 // dtTokenForProximityDatabase
@@ -227,7 +232,7 @@ public:
 	}
 
 
-	void DrawGizmos(dtGizmosDrawable& drawable) override
+	void DrawGizmos(dtGizmosDrawable& drawable, const dtGizmosToggles& toggles) override
 	{
 		auto slab = div_y * div_z;
 		auto row = div_z;
@@ -254,16 +259,19 @@ public:
 					auto bin = bins[iindex + jindex + kindex];
 					auto is_empty = bin == 0;
 
-					float min[3] = { origin[0] + bin_size[0] * i, origin[1] + bin_size[1] * j, origin[2] + bin_size[2] * k };
-					float max[3];
-					dtVadd(max, min, bin_size);
+					if (toggles.m_showCells)
+					{
+						float min[3] = { origin[0] + bin_size[0] * i, origin[1] + bin_size[1] * j, origin[2] + bin_size[2] * k };
+						float max[3];
+						dtVadd(max, min, bin_size);
 
-					float center[3] = { (max[0] + min[0]) * 0.5f, (max[1] + min[1]) * 0.5f, (max[2] + min[2]) * 0.5f};
-					dtVsub(min, center, sacled_half_bin_size);
-					dtVadd(max, center, sacled_half_bin_size);
+						float center[3] = { (max[0] + min[0]) * 0.5f, (max[1] + min[1]) * 0.5f, (max[2] + min[2]) * 0.5f };
+						dtVsub(min, center, sacled_half_bin_size);
+						dtVadd(max, center, sacled_half_bin_size);
 
-					auto color = is_empty? dtGizmosColor(255, 255, 0, 255) : dtGizmosColor(255, 0, 0, 255);
-					drawable.DrawAabb(min, max, color);
+						auto color = is_empty ? dtGizmosColor(255, 255, 0, 255) : dtGizmosColor(255, 0, 0, 255);
+						drawable.DrawAabb(min, max, color);
+					}
 
 					kindex += 1;
 				}

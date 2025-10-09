@@ -32,23 +32,6 @@
 #include <map>
 #include <memory>
 
-class GizmosDrawable : public dtGizmosDrawable
-{
-
-public:
-	GizmosDrawable(SampleDebugDraw* dd)
-		: m_dd(dd)
-	{
-	}
-
-	void DrawLine(const float* start, const float* end, const dtGizmosColor& color) override;
-
-	void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color) override;
-
-protected:
-	SampleDebugDraw* m_dd;
-};
-
 class DynamicBoxObstacle : public dtBoxObstacle
 {
 public:
@@ -94,7 +77,7 @@ public:
 		const float move_speed);
 	void RemoveBoxObstacle(TTokenForProximityDatabase* token);
 
-	void DrawGizmos(dtGizmosDrawable& drawable) override;
+	void DrawGizmos(dtGizmosDrawable& drawable, const dtGizmosToggles& toggles) override;
 
 protected:
 	using TBoxObstaclePtr = std::shared_ptr<DynamicBoxObstacle>;

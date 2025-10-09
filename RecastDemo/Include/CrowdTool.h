@@ -25,6 +25,25 @@
 #include "ValueHistory.h"
 #include "DetourCrowd.h"
 
+// add by iceguan
+class GizmosDrawable : public dtGizmosDrawable
+{
+
+public:
+	GizmosDrawable(duDebugDraw* dd)
+		: m_dd(dd)
+	{
+	}
+
+	void DrawLine(const float* start, const float* end, const dtGizmosColor& color) override;
+
+	void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color) override;
+
+protected:
+	duDebugDraw* m_dd;
+};
+// end
+
 // Tool to create crowds.
 
 struct CrowdToolParams
@@ -52,6 +71,13 @@ struct CrowdToolParams
 	float m_obstacleAvoidanceType;
 	bool m_separation;
 	float m_separationWeight;
+
+	// add by iceguan
+	bool m_showDynamicObstacleDebugDraw;
+	bool m_showDynamicObstacleDatabaseCells;
+	bool m_showDynamicObstacleSegments;
+	bool m_showDynamicObstacleContacts;
+	// end
 };
 
 class CrowdToolState : public SampleToolState

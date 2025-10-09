@@ -1096,13 +1096,6 @@ void Sample_TempObstacles::handleRender()
 			duDebugDrawNavMeshNodes(&m_dd, *m_navQuery);
 		duDebugDrawNavMeshPolysWithFlags(&m_dd, *m_navMesh, SAMPLE_POLYFLAGS_DISABLED, duRGBA(0,0,0,128));
 	}
-
-	// draw obstacles
-	if (m_obstacles)
-	{
-		auto drawable = GizmosDrawable(&m_dd);
-		m_obstacles->DrawGizmos(drawable);
-	}
 	
 	
 	glDepthMask(GL_TRUE);
@@ -1816,39 +1809,14 @@ void BoxObstacleManager::RemoveBoxObstacle(TTokenForProximityDatabase* token)
 	FreeToken(token);
 }
 
-void BoxObstacleManager::DrawGizmos(dtGizmosDrawable& drawable)
+void BoxObstacleManager::DrawGizmos(dtGizmosDrawable& drawable, const dtGizmosToggles& toggles)
 {
-	Super::DrawGizmos(drawable);
+	Super::DrawGizmos(drawable, toggles);
 
 	// draw box obstacle
 	for (auto& obs : m_boxObstacles)
 	{
 		obs->DrawGizmos(drawable);
-	}
-}
-
-void GizmosDrawable::DrawLine(const float* start, const float* end, const dtGizmosColor& color)
-{
-	if (m_dd)
-	{
-		const unsigned int col = duRGBA(color.r, color.g, color.b, color.a);
-
-		m_dd->begin(DU_DRAW_LINES, 2.0f);
-
-		m_dd->vertex(start, col);
-		m_dd->vertex(end, col);
-
-		m_dd->end();
-	}
-}
-
-void GizmosDrawable::DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color)
-{
-	if (m_dd)
-	{
-		const unsigned int col = duRGBA(color.r, color.g, color.b, color.a);
-
-		duDebugDrawBoxWire(m_dd, aabb_min[0], aabb_min[1], aabb_min[2], aabb_max[0], aabb_max[1], aabb_max[2], col, 1.0f);
 	}
 }
 // end
