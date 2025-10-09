@@ -1096,6 +1096,18 @@ void Sample_TempObstacles::handleRender()
 			duDebugDrawNavMeshNodes(&m_dd, *m_navQuery);
 		duDebugDrawNavMeshPolysWithFlags(&m_dd, *m_navMesh, SAMPLE_POLYFLAGS_DISABLED, duRGBA(0,0,0,128));
 	}
+
+	// add by iceguan
+	if (m_tool && m_tool->type() != TOOL_CROWD)
+	{
+		if (m_obstacles)
+		{
+			auto drawable = GizmosDrawable(&m_dd);
+			auto toggles = dtGizmosToggles();
+			m_obstacles->DrawGizmos(drawable, toggles);
+		}
+	}
+	// end
 	
 	
 	glDepthMask(GL_TRUE);
@@ -1593,7 +1605,7 @@ void Sample_TempObstacles::addBoxObstacle(const float* pos)
 		float angular_speed = frand_range(0.0f, 1.0f);
 
 		float linear_speed = frand_range(0.0f, 2.0f);
-		float move_time = frand_range(1.0f, 3.0f);
+		float move_time = frand_range(2.0f, 6.0f);
 
 		bool isAdd = false;
 		float dest[3] = { 0.0f, 0.0f, 0.0f };
@@ -1729,9 +1741,13 @@ void DynamicBoxObstacle::Tick(float dt)
 {
 	Super::Tick(dt);
 
+	bool is_update_aabb = false;
+
 	if (angular_speed > 0)
 	{
 		RotateYAngle(angular_speed * dt);
+
+		is_update_aabb = true;
 	}
 
 	if (move_speed > 0)
@@ -1762,6 +1778,19 @@ void DynamicBoxObstacle::Tick(float dt)
 			
 			MoveDelta(d);
 		}
+
+		is_update_aabb = true;
+	}
+
+	if (is_update_aabb)
+	{
+		// update aabb
+		UpdateAabb();
+
+		if (token && database)
+		{
+			token->UpdateForNewPosition(*database, worldCenter, worldAabb);
+		}
 	}
 }
 
@@ -1786,11 +1815,16 @@ BoxObstacleManager::AddBoxObstacle(
 	dtVcopy(box->move_end, move_dest);
 	box->move_speed = move_speed;
 
+	box->UpdateAabb();
+
 	m_boxObstacles.push_back(box);
 
 	auto token = AllocToken(box.get());
 	dtAssert(token);
-	UpdateForNewLocation(*token, pos);
+	UpdateForNewLocation(*token, pos, box->worldAabb);
+	
+	box->token = token;
+	box->database = this;
 	return token;
 }
 

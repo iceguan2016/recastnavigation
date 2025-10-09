@@ -50,9 +50,13 @@ public:
 	float move_end[3];
 	float move_dir = 1.0f;
 	float move_speed = 0.0f;
+
+	// token
+	TConvexObstacleProximityDatabase* database = 0;
+	TConvexObstacleProximityDatabase::TTokenForProximityDatabase* token = 0;
 };
 
-class BoxObstacleManager : public dtLocalityProximityDatabase<TConvexObstaclePtr>
+class BoxObstacleManager : public TConvexObstacleProximityDatabase
 {
 public:
 	typedef dtLocalityProximityDatabase<TConvexObstaclePtr> Super;

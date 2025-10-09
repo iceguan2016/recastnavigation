@@ -87,6 +87,8 @@ public:
 	virtual int		SegmentNum() const override;
 	virtual void	ForeachSegement(TCallback func) const override;
 
+	void UpdateAabb();
+
 public:
 	float localExtent[3];
 };

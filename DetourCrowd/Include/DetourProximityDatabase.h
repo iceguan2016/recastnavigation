@@ -52,7 +52,8 @@ public:
 
 	void UpdateForNewPosition(
 		TProximityDatabase& database,
-		const float* pos);
+		const float* pos,
+		const float aabb[2][3]);
 
 	int FindNeighbors(
 		TProximityDatabase& database,
@@ -81,7 +82,7 @@ public:
 	virtual void ForeachByRadius(const float* center, const float radius, TDatabaseQueryFilter filter) = 0;
 	virtual void ForeachAllMut(TDatabaseQueryFilterMut	filter) = 0;
 
-	virtual void UpdateForNewLocation(TTokenForProximityDatabase& token, const float* pos) = 0;
+	virtual void UpdateForNewLocation(TTokenForProximityDatabase& token, const float* pos, const float aabb[2][3]) = 0;
 
 	virtual void DrawGizmos(dtGizmosDrawable& drawable, const dtGizmosToggles& toggles) = 0;
 };
@@ -111,9 +112,10 @@ int dtTokenForProximityDatabase<TDataType, TPayload>::FindNeighbors(
 template <typename TDataType, typename TPayload>
 void dtTokenForProximityDatabase<TDataType, TPayload>::UpdateForNewPosition(
 	TProximityDatabase& database,
-	const float* pos)
+	const float* pos,
+	const float aabb[2][3])
 {
-	database.UpdateForNewLocation(*this, pos);
+	database.UpdateForNewLocation(*this, pos, aabb);
 }
 
 // dtLocalityProximityDatabase
@@ -134,6 +136,7 @@ struct dtLocalityClientProxy
 
 	// the obj's location ("key point") used for spatial sorting
 	float position[3];
+	float worldAabb[2][3];
 
 	dtLocalityClientProxy(const T& obj)
 	{
@@ -210,7 +213,7 @@ public:
 	}
 
 
-	void UpdateForNewLocation(TTokenForProximityDatabase& token, const float* pos) override
+	void UpdateForNewLocation(TTokenForProximityDatabase& token, const float* pos, const float aabb[2][3]) override
 	{
 		/* find bin for new location */
 		auto new_bin = bin_for_location(pos);
@@ -220,6 +223,8 @@ public:
 		if (token.proxy)
 		{
 			dtVcopy(token.proxy->position, pos);
+			dtVcopy(token.proxy->worldAabb[0], aabb[0]);
+			dtVcopy(token.proxy->worldAabb[1], aabb[1]);
 			obj_bin = token.proxy->bin;
 		}
 
