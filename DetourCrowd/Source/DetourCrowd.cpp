@@ -1295,6 +1295,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			// Append convex obstacle boundary segments
 			if (m_convexObstacles)
 			{
+				ag->obstacleSegmentNum = 0;
 				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 					if (obs->ContactEvaluateWithCircle(ag->npos, m_queryConvexObstaclesRadius, ag->params.height))
 					{
@@ -1302,6 +1303,17 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 							if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
 							{
 								m_obstacleQuery->addSegment(p0, p1);
+
+								if (ag->obstacleSegmentNum < dtCrowdAgent::MAX_OBSTACLE_SEGMENTS)
+								{
+									float* start = ag->obstacleSegments[ag->obstacleSegmentNum][0];
+									float* end = ag->obstacleSegments[ag->obstacleSegmentNum][1];
+
+									dtVcopy(start, p0);
+									dtVcopy(end, p1);
+
+									ag->obstacleSegmentNum++;
+								}
 							}
 							return true;
 						});
@@ -1427,6 +1439,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 
 				dtVset(ag->disp, 0, 0, 0);
 
+				ag->contactNum = 0;
 				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 					if (obs->ContactEvaluateWithCircle(ag->npos, ag->params.radius, ag->params.height))
 					{
@@ -1435,6 +1448,12 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 						{
 							// shape0: Box, shape1: Circle
 							dtVmad(ag->disp, ag->disp, contact.normal, -contact.separation);
+
+							if (ag->contactNum < dtCrowdAgent::MAX_OBSTACLE_CONTACTS)
+							{
+								ag->contacts[ag->contactNum] = contact;
+								ag->contactNum++;
+							}
 						}
 					}
 					return true;

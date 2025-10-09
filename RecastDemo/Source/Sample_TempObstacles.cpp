@@ -837,7 +837,10 @@ Sample_TempObstacles::Sample_TempObstacles() :
 	m_drawMode(DRAWMODE_NAVMESH),
 	m_maxTiles(0),
 	m_maxPolysPerTile(0),
-	m_tileSize(48)
+	m_tileSize(48),
+	// add by iceguan
+	m_obstacles(0)
+	// end
 {
 	resetCommonSettings();
 	
@@ -846,10 +849,6 @@ Sample_TempObstacles::Sample_TempObstacles() :
 	m_tmproc = new MeshProcess;
 	
 	setTool(new TempObstacleCreateTool);
-
-	// add by iceguan
-	m_obstacles = new BoxObstacleManager();
-	// end
 }
 
 Sample_TempObstacles::~Sample_TempObstacles()
@@ -1173,6 +1172,23 @@ void Sample_TempObstacles::handleMeshChanged(class InputGeom* geom)
 	}
 	resetToolStates();
 	initToolStates(this);
+
+	// add by iceguan
+	if (geom)
+	{
+		auto min = geom->getMeshBoundsMin();
+		auto max = geom->getMeshBoundsMax();
+
+		float size[3];
+		dtVsub(size, max, min);
+
+		float cellSize = 10.0f;
+		float divs[3];
+		dtVscale(divs, size, 1.0f / cellSize);
+
+		m_obstacles = new BoxObstacleManager(min, size, (int)divs[0], 1, (int)divs[2]);
+	}
+	// end
 }
 
 void Sample_TempObstacles::addTempObstacle(const float* pos)
@@ -1828,7 +1844,7 @@ void GizmosDrawable::DrawAabb(const float* aabb_min, const float* aabb_max, cons
 	{
 		const unsigned int col = duRGBA(color.r, color.g, color.b, color.a);
 
-		duDebugDrawBox(m_dd, aabb_min[0], aabb_min[1], aabb_min[2], aabb_max[0], aabb_max[1], aabb_max[2], &col);
+		duDebugDrawBoxWire(m_dd, aabb_min[0], aabb_min[1], aabb_min[2], aabb_max[0], aabb_max[1], aabb_max[2], col, 1.0f);
 	}
 }
 

@@ -273,7 +273,7 @@ public:
 		}
 	}
 
-	static Self* Create(
+	dtLocalityProximityDatabase(
 		const float* origin,
 		const float* size,
 		const int divx,
@@ -282,22 +282,28 @@ public:
 	{
 		dtAssert(divx > 0 && divy > 0 && divz > 0);
 
-		auto data_base = new Self();
-		dtVcopy(data_base->origin, origin);
-		dtVcopy(data_base->size, size);
-		data_base->div_x = divx;
-		data_base->div_y = divy;
-		data_base->div_z = divz;
+		dtVcopy(this->origin, origin);
+		dtVcopy(this->size, size);
+		div_x = divx;
+		div_y = divy;
+		div_z = divz;
 
-		int bin_count = divx * divy * divz + 1;
-		data_base->bins = new TClentProxy*[bin_count];
+		bin_count = divx * divy * divz + 1;
+		bins = new TClentProxy * [bin_count];
 		for (int i = 0; i < bin_count; ++i)
 		{
-			data_base->bins[i] = 0;
+			bins[i] = 0;
 		}
-		data_base->bin_count = bin_count;
+	}
 
-		return data_base;
+	static Self* Create(
+		const float* origin,
+		const float* size,
+		const int divx,
+		const int divy,
+		const int divz)
+	{
+		return new Self(origin, size, divx, divy, divz);
 	}
 
 	dtLocalityProximityDatabase()

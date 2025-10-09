@@ -514,6 +514,33 @@ void CrowdToolState::handleRender()
 						 pos[0]+vel[0],pos[1]+height+vel[1],pos[2]+vel[2],
 						 0.0f, 0.4f, duRGBA(0,0,0,160), 2.0f);
 	}
+
+	// add by iceguan
+
+	// Obstacle segments
+	for (int i = 0; i < crowd->getAgentCount(); ++i)
+	{
+		const dtCrowdAgent* ag = crowd->getAgent(i);
+		if (!ag->active) continue;
+
+		if (ag->obstacleSegmentNum <= 0) continue;
+		for (int k = 0; k < ag->obstacleSegmentNum; ++k)
+		{
+			unsigned int col = duRGBA(220, 220, 220, 192);
+
+			const float* p0 = ag->obstacleSegments[k][0];
+			const float* p1 = ag->obstacleSegments[k][0];
+
+			duDebugDrawArrow(&dd, 
+				p0[0], p0[1], p0[2],
+				p1[0], p1[1], p1[2],
+				0.0f, 0.4f, col, (m_agentDebug.idx == i) ? 2.0f : 1.0f);
+		}
+	}
+
+	// Obstacle contacts
+
+	// end
 	
 	dd.depthMask(true);
 }

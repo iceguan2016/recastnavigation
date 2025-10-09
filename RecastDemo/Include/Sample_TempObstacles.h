@@ -74,6 +74,17 @@ class BoxObstacleManager : public dtLocalityProximityDatabase<TConvexObstaclePtr
 public:
 	typedef dtLocalityProximityDatabase<TConvexObstaclePtr> Super;
 
+	BoxObstacleManager(
+		const float* origin,
+		const float* size,
+		const int divx,
+		const int divy,
+		const int divz)
+		: Super(origin, size, divx, divy, divz)
+	{
+
+	}
+
 	TTokenForProximityDatabase* AddBoxObstacle(
 		const float* pos, 
 		const float* extent, 

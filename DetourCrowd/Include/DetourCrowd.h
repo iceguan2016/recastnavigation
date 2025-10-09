@@ -173,6 +173,16 @@ struct dtCrowdAgent
 	dtPathQueueRef targetPathqRef;		///< Path finder ref.
 	bool targetReplan;					///< Flag indicating that the current path is being replanned.
 	float targetReplanTime;				/// <Time since the agent's target was replanned.
+
+	// add by iceguan
+	static const int MAX_OBSTACLE_SEGMENTS = 10;
+	float obstacleSegments[MAX_OBSTACLE_SEGMENTS][2][3];
+	int obstacleSegmentNum;
+
+	static const int MAX_OBSTACLE_CONTACTS = 10;
+	dtContactInfo contacts[MAX_OBSTACLE_CONTACTS];
+	int contactNum;
+	// end
 };
 
 struct dtCrowdAgentAnimation
