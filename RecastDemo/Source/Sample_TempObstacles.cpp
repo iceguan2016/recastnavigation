@@ -849,6 +849,10 @@ Sample_TempObstacles::Sample_TempObstacles() :
 	m_tmproc = new MeshProcess;
 	
 	setTool(new TempObstacleCreateTool);
+
+	// add by iceguan
+	srand((unsigned int)time(NULL));
+	// end
 }
 
 Sample_TempObstacles::~Sample_TempObstacles()
@@ -1406,17 +1410,9 @@ void Sample_TempObstacles::handleUpdate(const float dt)
 	m_tileCache->update(dt, m_navMesh);
 
 	// add by iceguan
-	if (m_obstacles)
+	if (m_crowd)
 	{
-		if (m_crowd)
-		{
-			m_crowd->setConvexObstacleProximityDatabase(m_obstacles);
-		}
-
-		m_obstacles->ForeachAllMut([dt](TConvexObstaclePtr& obs)->bool {
-			obs->Tick(dt);
-			return false;
-		});
+		m_crowd->setConvexObstacleProximityDatabase(m_obstacles);
 	}
 	// end
 }

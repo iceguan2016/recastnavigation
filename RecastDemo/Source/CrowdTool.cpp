@@ -517,13 +517,12 @@ void CrowdToolState::handleRender()
 
 	// add by iceguan
 
-	// Obstacle segments
 	for (int i = 0; i < crowd->getAgentCount(); ++i)
 	{
 		const dtCrowdAgent* ag = crowd->getAgent(i);
 		if (!ag->active) continue;
 
-		if (ag->obstacleSegmentNum <= 0) continue;
+		// Obstacle segments
 		for (int k = 0; k < ag->obstacleSegmentNum; ++k)
 		{
 			unsigned int col = duRGBA(220, 220, 220, 192);
@@ -536,9 +535,24 @@ void CrowdToolState::handleRender()
 				p1[0], p1[1], p1[2],
 				0.0f, 0.4f, col, (m_agentDebug.idx == i) ? 3.0f : 2.0f);
 		}
-	}
 
-	// Obstacle contacts
+		// Obstacle contacts
+		for (int k = 0; k < ag->contactNum; ++k)
+		{
+			unsigned int col = duRGBA(255, 0, 0, 255);
+
+			const auto& contact = ag->contacts[k];
+			auto p0 = contact.point;
+
+			float p1[3];
+			dtVmad(p1, p0, contact.normal, contact.separation);
+
+			duDebugDrawArrow(&dd,
+				p0[0], p0[1], p0[2],
+				p1[0], p1[1], p1[2],
+				0.0f, 0.2f, col, 1.0f);
+		}
+	}
 
 	// end
 	

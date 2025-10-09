@@ -83,9 +83,9 @@ void dtBoxObstacle::box_local_vertices_and_normals(const float* extent, float ou
 	dtVset(out_vertices[2], halfExtent[0], 0.0f, halfExtent[2]);
 	dtVset(out_vertices[3], -halfExtent[0], 0.0f, halfExtent[2]);
 
-	dtVset(out_normals[0], 0.0f, -1.0f, 0.0f);
+	dtVset(out_normals[0], 0.0f, 0.0f, -1.0f);
 	dtVset(out_normals[1], 1.0f, 0.0f, 0.0f);
-	dtVset(out_normals[2], 0.0f, 1.0f, 0.0f);
+	dtVset(out_normals[2], 0.0f, 0.0f, 1.0f);
 	dtVset(out_normals[3], -1.0f, 0.0f, 0.0f);
 }
 
