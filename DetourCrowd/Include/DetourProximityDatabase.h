@@ -433,13 +433,13 @@ protected:
 		auto curr_handle = proxy;
 		while (curr_handle != 0)
 		{
-			auto distance_sqaured = dtVdist(proxy->position, position);
+			auto distance_sqaured = dtVdist(curr_handle->position, position);
 			if (distance_sqaured < radius_squared)
 			{
-				filter(proxy->obj);
+				filter(curr_handle->obj);
 			}
 
-			curr_handle = proxy->next;
+			curr_handle = curr_handle->next;
 		}
 	}
 

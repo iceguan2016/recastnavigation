@@ -529,12 +529,12 @@ void CrowdToolState::handleRender()
 			unsigned int col = duRGBA(220, 220, 220, 192);
 
 			const float* p0 = ag->obstacleSegments[k][0];
-			const float* p1 = ag->obstacleSegments[k][0];
+			const float* p1 = ag->obstacleSegments[k][1];
 
 			duDebugDrawArrow(&dd, 
 				p0[0], p0[1], p0[2],
 				p1[0], p1[1], p1[2],
-				0.0f, 0.4f, col, (m_agentDebug.idx == i) ? 2.0f : 1.0f);
+				0.0f, 0.4f, col, (m_agentDebug.idx == i) ? 3.0f : 2.0f);
 		}
 	}
 

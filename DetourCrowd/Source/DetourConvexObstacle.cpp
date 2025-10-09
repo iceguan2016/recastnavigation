@@ -206,6 +206,36 @@ bool dtBoxObstacle::ContactResultWithCircle(const float* c, const float r, dtCon
 
 void dtBoxObstacle::Tick(float dt)
 {
+	// update aabb
+	float local_vertices[4][3], local_normals[4][3];
+	box_local_vertices_and_normals(localExtent, local_vertices, local_normals);
+
+	float world_vertices[4][3];
+	for (int i = 0; i < 4; ++i)
+	{
+		LocalToWorldPosition(world_vertices[i], local_vertices[i]);
+	}
+
+	dtVset(worldAabb[0], FLT_MAX, FLT_MAX, FLT_MAX);
+	dtVset(worldAabb[1], -FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+	for (int i = 0; i < 4; ++i)
+	{
+		if (world_vertices[i][0] < worldAabb[0][0])
+			worldAabb[0][0] = world_vertices[i][0];
+
+		if (world_vertices[i][2] < worldAabb[0][2])
+			worldAabb[0][2] = world_vertices[i][2];
+
+		if (world_vertices[i][0] > worldAabb[1][0])
+			worldAabb[1][0] = world_vertices[i][0];
+
+		if (world_vertices[i][2] > worldAabb[1][2])
+			worldAabb[1][2] = world_vertices[i][2];
+	}
+
+	worldAabb[0][1] = worldCenter[1] - localExtent[1] / 2;
+	worldAabb[1][1] = worldCenter[1] + localExtent[1] / 2;
 }
 
 int dtBoxObstacle::SegmentNum() const
@@ -215,17 +245,18 @@ int dtBoxObstacle::SegmentNum() const
 
 void dtBoxObstacle::ForeachSegement(TCallback func) const
 {
-	float vertices[4][3], normals[4][3];
-	box_local_vertices_and_normals(localExtent, vertices, normals);
+	float local_vertices[4][3], local_normals[4][3];
+	box_local_vertices_and_normals(localExtent, local_vertices, local_normals);
 
+	float world_vertices[4][3];
 	for (int i = 0; i < 4; ++i)
 	{
-		LocalToWorldPosition(vertices[i], vertices[i]);
+		LocalToWorldPosition(world_vertices[i], local_vertices[i]);
 	}
 
 	for (int i = 0; i < 4; ++i)
 	{
 		int j = (i + 1) >= 4 ? 0 : i + 1;
-		func(vertices[i], vertices[j]);
+		func(world_vertices[i], world_vertices[j]);
 	}
 }

@@ -1429,7 +1429,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 
 		// add by iceguan
 		// Collision with convex obstacles
-		if (m_convexObstacles)
+		if (m_convexObstacles && false)
 		{
 			for (int i = 0; i < nagents; ++i)
 			{

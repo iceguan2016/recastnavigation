@@ -1408,6 +1408,11 @@ void Sample_TempObstacles::handleUpdate(const float dt)
 	// add by iceguan
 	if (m_obstacles)
 	{
+		if (m_crowd)
+		{
+			m_crowd->setConvexObstacleProximityDatabase(m_obstacles);
+		}
+
 		m_obstacles->ForeachAllMut([dt](TConvexObstaclePtr& obs)->bool {
 			obs->Tick(dt);
 			return false;
@@ -1594,13 +1599,15 @@ void Sample_TempObstacles::addBoxObstacle(const float* pos)
 {
 	if (m_obstacles && m_navQuery)
 	{
-		float extent[3] = { frand_range(1.0f, 3.0f), 1.0f, frand_range(1.0f, 3.0f) };
+		float extent[3] = { frand_range(3.0f, 10.0f), 1.0f, frand_range(3.0f, 10.0f) };
 		float angle = frand_range(0.0f, 6.28f);
 		float angular_speed = frand_range(0.0f, 1.0f);
 
 		float linear_speed = frand_range(0.0f, 2.0f);
 		float move_time = frand_range(1.0f, 3.0f);
 
+		bool isAdd = false;
+		float dest[3] = { 0.0f, 0.0f, 0.0f };
 		if (linear_speed > 0)
 		{
 			const float s = dtMathSinf(angle);
@@ -1614,8 +1621,6 @@ void Sample_TempObstacles::addBoxObstacle(const float* pos)
 
 			dtQueryFilter filter;
 			dtPolyRef startRef = 0;
-			bool isAdd = false;
-			float dest[3] = { 0.0f, 0.0f, 0.0f };
 			if (dtStatusSucceed(m_navQuery->findNearestPoly(pos, polyPickExt, &filter, &startRef, 0)))
 			{
 				dtRaycastHit hit;
@@ -1636,13 +1641,12 @@ void Sample_TempObstacles::addBoxObstacle(const float* pos)
 					isAdd = true;
 				}
 			}
-
-			if (!isAdd)
-			{
-				m_obstacles->AddBoxObstacle(pos, extent, angle, angular_speed, dest, 0.0f);
-			}
 		}
 		
+		if (!isAdd)
+		{
+			m_obstacles->AddBoxObstacle(pos, extent, angle, angular_speed, dest, 0.0f);
+		}
 	}
 }
 
@@ -1726,6 +1730,10 @@ void DynamicBoxObstacle::DrawGizmos(dtGizmosDrawable& drawable)
 		dtGizmosColor line_col(255, 0, 0, 255);
 		drawable.DrawLine(start, end, line_col);
 	}
+
+	// draw aabb
+	dtGizmosColor aabb_col(0, 255, 0, 255);
+	drawable.DrawAabb(worldAabb[0], worldAabb[1], aabb_col);
 }
 
 void DynamicBoxObstacle::Tick(float dt)
@@ -1847,5 +1855,4 @@ void GizmosDrawable::DrawAabb(const float* aabb_min, const float* aabb_max, cons
 		duDebugDrawBoxWire(m_dd, aabb_min[0], aabb_min[1], aabb_min[2], aabb_max[0], aabb_max[1], aabb_max[2], col, 1.0f);
 	}
 }
-
 // end
