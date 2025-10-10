@@ -129,6 +129,9 @@ protected:
 
 	// add by iceguan
 	BoxObstacleManager* m_obstacles;
+	bool m_testAgentSet;
+	float m_testAgentCenter[3];
+	float m_testAgentRadius;
 	// end
 	
 public:
@@ -158,6 +161,8 @@ public:
 
 	void addBoxObstacle(const float* pos);
 	void removeBoxObstacle(const float* sp, const float* sq);
+
+	void setTestAgent(const float* c, const float radius);
 
 private:
 	// Explicitly disabled copy constructor and copy assignment operator.

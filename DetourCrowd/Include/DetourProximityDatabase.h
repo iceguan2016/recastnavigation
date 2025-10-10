@@ -208,7 +208,10 @@ public:
 	{
 		for (auto& proxy : client_proxies)
 		{
-			filter(proxy.obj);
+			if (filter(proxy.obj))
+			{
+				break;
+			}
 		}
 	}
 

@@ -806,7 +806,10 @@ public:
 		if (m_sample)
 		{
 			if (shift)
-				m_sample->removeTempObstacle(s,p);
+			{
+				m_sample->removeTempObstacle(s, p);
+				m_sample->setTestAgent(p, 1.0f);
+			}
 			else
 			{
 				m_sample->addTempObstacle(p);
@@ -852,6 +855,9 @@ Sample_TempObstacles::Sample_TempObstacles() :
 
 	// add by iceguan
 	srand((unsigned int)time(NULL));
+	m_testAgentSet = false;
+	dtVset(m_testAgentCenter, 0.0f, 0.0f, 0.0f);
+	m_testAgentRadius = 1.0f;
 	// end
 }
 
@@ -1105,6 +1111,54 @@ void Sample_TempObstacles::handleRender()
 			auto drawable = GizmosDrawable(&m_dd);
 			auto toggles = dtGizmosToggles();
 			m_obstacles->DrawGizmos(drawable, toggles);
+		}
+	}
+
+	if (m_testAgentSet)
+	{
+		unsigned int col0 = duRGBA(0, 0, 255, 255);
+		duDebugDrawCircle(
+			&m_dd, 
+			m_testAgentCenter[0], 
+			m_testAgentCenter[1], 
+			m_testAgentCenter[2],
+			m_testAgentRadius, 
+			col0,
+			1.0f);
+
+		if (m_obstacles)
+		{
+			m_obstacles->ForeachAllMut([&](TConvexObstaclePtr& obs)->bool {
+				dtContactInfo contact;
+				if (obs->ContactResultWithCircle(m_testAgentCenter, m_testAgentRadius, contact))
+				{
+					unsigned int col1 = duRGBA(255, 0, 0, 255);
+
+					auto p0 = contact.point;
+
+					float p1[3];
+					dtVmad(p1, p0, contact.normal, contact.separation);
+
+					duDebugDrawArrow(&m_dd,
+						p0[0], p0[1], p0[2],
+						p1[0], p1[1], p1[2],
+						0.0f, 0.2f, col1, 1.0f);
+
+					// modify position
+					float p[3];
+					dtVmad(p, m_testAgentCenter, contact.normal, contact.separation);
+					duDebugDrawCircle(
+						&m_dd,
+						p[0],
+						p[1],
+						p[2],
+						m_testAgentRadius,
+						col1,
+						1.0f);
+					return true;
+				}
+				return false;
+			});
 		}
 	}
 	// end
@@ -1654,6 +1708,14 @@ void Sample_TempObstacles::addBoxObstacle(const float* pos)
 void Sample_TempObstacles::removeBoxObstacle(const float* sp, const float* sq)
 {
 
+}
+
+void Sample_TempObstacles::setTestAgent(const float* c, const float radius)
+{
+	dtVcopy(m_testAgentCenter, c);
+	m_testAgentRadius = radius;
+
+	m_testAgentSet = true;
 }
 
 // BoxObstacle
