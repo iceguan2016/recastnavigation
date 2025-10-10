@@ -260,7 +260,7 @@ public:
 	dtCrowd();
 	~dtCrowd();
 
-	// add by icgeuan
+	// add by iceguan
 	void setConvexObstacleProximityDatabase(TConvexObstacleProximityDatabase* database) { m_convexObstacles = database; }
 	TConvexObstacleProximityDatabase* getConvexObstacleProximityDatabase() const { return m_convexObstacles; }
 	void setQueryConvexObstaclesRadius(const float radius) { m_queryConvexObstaclesRadius = radius; }

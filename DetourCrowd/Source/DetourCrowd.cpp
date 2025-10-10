@@ -1388,8 +1388,11 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 							float vvel[3], pvel[3];
 							dtVscale(vvel, contact.normal, dot);
 							dtVsub(pvel, ag->nvel, vvel);
+							
 							dtVnormalize(pvel);
 							dtVscale(ag->nvel, pvel, vlen);
+							
+							//dtVsub(ag->nvel, pvel, vvel);
 						}
 
 						if (ag->contactNum < dtCrowdAgent::MAX_OBSTACLE_CONTACTS)
@@ -1480,18 +1483,9 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			
 			dtVadd(ag->npos, ag->npos, ag->disp);
 		}
-	}
 
-	// add by iceguan
-	static const float RESOLVE_OBSTACLE_COLLISION_FACTOR = 0.7f;
-	for (int i = 0; i < nagents; ++i)
-	{
-		dtCrowdAgent* ag = agents[i];
-		const int idx0 = getAgentIndex(ag);
-
-		if (ag->state != DT_CROWDAGENT_STATE_WALKING)
-			continue;
-
+		// add by iceguan
+		static const float RESOLVE_OBSTACLE_COLLISION_FACTOR = 0.7f;
 		// Collision with convex obstacles
 		if (m_convexObstacles)
 		{
@@ -1514,7 +1508,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 						}
 					}
 					return true;
-				});
+					});
 			}
 
 			for (int i = 0; i < nagents; ++i)
@@ -1525,11 +1519,14 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 
 				float tpos[3];
 				dtVadd(tpos, ag->npos, ag->disp);
-				dtVlerp(ag->npos, ag->npos, tpos, ag->params.maxSpeed*dt);
+				dtVlerp(ag->npos, ag->npos, tpos, ag->params.maxSpeed * dt);
+
+				//dtVadd(ag->npos, ag->npos, ag->disp);
 			}
 		}
+		// end
 	}
-	// end
+
 	
 	for (int i = 0; i < nagents; ++i)
 	{
