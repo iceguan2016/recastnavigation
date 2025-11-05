@@ -342,6 +342,8 @@ dtCrowd::dtCrowd() :
 	m_velocitySampleCount(0),
 	m_navquery(0),
 	// add by iceguan
+	m_velocityProjectionRadiusScale(1.2f),
+	m_velocityProjectionMode(1),
 	m_convexObstacles(0),
 	m_queryConvexObstaclesRadius(6.0f)
 	// end
@@ -1374,25 +1376,39 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 				continue;
 
 			ag->contactNum = 0;
+			float radius = ag->params.radius * m_velocityProjectionRadiusScale;
 			m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
-				if (obs->ContactEvaluateWithCircle(ag->npos, ag->params.radius, ag->params.height))
+				if (obs->ContactEvaluateWithCircle(ag->npos, radius, ag->params.height))
 				{
 					dtContactInfo contact;
-					if (obs->ContactResultWithCircle(ag->npos, ag->params.radius, contact))
+					if (obs->ContactResultWithCircle(ag->npos, radius, contact))
 					{
+						float sepDir[3];
+						dtVscale(sepDir, contact.normal, contact.separation >= 0 ? 1.0f : -1.0f);
+
+						float dot = dtVdot(ag->nvel, sepDir);
 						// shape0: Box, shape1: Circle
-						float vlen = dtVlen(ag->nvel);
-						if (vlen > 0)
+						// if dot >= 0, means separation
+						if (m_velocityProjectionMode > 0 && dot < 0)
 						{
-							float dot = dtVdot(ag->nvel, contact.normal);
-							float vvel[3], pvel[3];
-							dtVscale(vvel, contact.normal, dot);
-							dtVsub(pvel, ag->nvel, vvel);
-							
-							dtVnormalize(pvel);
-							dtVscale(ag->nvel, pvel, vlen);
-							
-							//dtVsub(ag->nvel, pvel, vvel);
+							float vlen = dtVlen(ag->nvel);
+							if (vlen > 0)
+							{
+								float vvel[3], pvel[3];
+								dtVscale(vvel, sepDir, dot);
+								dtVsub(pvel, ag->nvel, vvel);
+								dtVnormalize(pvel);
+
+								if (m_velocityProjectionMode == 1)
+								{
+									dtVscale(ag->nvel, pvel, ag->params.maxSpeed);
+								}
+								else if (m_velocityProjectionMode == 2)
+								{
+									dtVscale(pvel, pvel, ag->params.maxSpeed);
+									dtVmad(ag->nvel, pvel, vvel, -1.0f);
+								}
+							}
 						}
 
 						if (ag->contactNum < dtCrowdAgent::MAX_OBSTACLE_CONTACTS)
@@ -1588,3 +1604,12 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 	}
 	
 }
+// add by iceguan
+void dtCrowd::setAgentPosition(const int idx, const float* pos)
+{
+	if (idx < 0 || idx > m_maxAgents)
+		return;
+
+	dtVcopy(m_agents[idx].npos, pos);
+}
+// end

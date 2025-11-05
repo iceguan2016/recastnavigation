@@ -217,6 +217,8 @@ struct dtCrowdAgentDebugInfo
 class dtCrowd
 {
 	// add by iceguan
+	int m_velocityProjectionMode;
+	float m_velocityProjectionRadiusScale;
 	TConvexObstacleProximityDatabase* m_convexObstacles;
 	float m_queryConvexObstaclesRadius;
 	// end
@@ -261,9 +263,12 @@ public:
 	~dtCrowd();
 
 	// add by iceguan
+	void setVelocityProjectionMode(int val) { m_velocityProjectionMode = val; }
+	void setVelocityProjectionRadiusScale(float val) { m_velocityProjectionRadiusScale = val; }
 	void setConvexObstacleProximityDatabase(TConvexObstacleProximityDatabase* database) { m_convexObstacles = database; }
 	TConvexObstacleProximityDatabase* getConvexObstacleProximityDatabase() const { return m_convexObstacles; }
 	void setQueryConvexObstaclesRadius(const float radius) { m_queryConvexObstaclesRadius = radius; }
+	void setAgentPosition(const int idx, const float* pos);
 	// end
 	
 	/// Initializes the crowd.  
