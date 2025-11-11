@@ -5,9 +5,23 @@
 
 #include <list>
 
-int rayIntersectWithSegment(const float* ap, const float* u,
-	const float* bp, const float* bq,
-	float& t);
+class dtAvoidanceUtils
+{
+public:
+	static const float eplision;
+	static const float zero[3];
+
+	static bool isZeroVec(const float* v)
+	{
+		return !(dtAbs(v[0]) > eplision ||
+			dtAbs(v[1]) > eplision ||
+			dtAbs(v[2]) > eplision);
+	}
+
+	static int isectRaySeg(const float* ap, const float* u,
+		const float* bp, const float* bq,
+		float& t);
+};
 
 class dtEdgeHandle
 {
@@ -44,9 +58,6 @@ template<typename TObstacleHandle>
 class dtVO
 {
 public:
-	static const float eplision;
-	static const float zero[3];
-
 	static const int edgeLeftIndex = 0;
 	static const int edgeRightIndex = 1;
 
@@ -77,7 +88,8 @@ public:
 		{
 			_handle = handle;
 			dtVcopy(_direction, dir);
-			if (dtAbs(dir[0]) > eplision && dtAbs(dir[2]) > eplision)
+			if (dtAbs(dir[0]) > dtAvoidanceUtils::eplision ||
+				dtAbs(dir[2]) > dtAvoidanceUtils::eplision)
 			{
 				_angle = atan2f(dir[2], dir[0]); // (-PI, PI)
 				// while (Angle < 0) Angle += FixMath.F64.Pi2;
@@ -100,8 +112,8 @@ public:
 	};
 
 	VOEdge _edges[2] = {
-		{ TObstacleHandle::INVALID, zero, 0.0f },
-		{ TObstacleHandle::INVALID, zero, 0.0f }
+		{ TObstacleHandle::INVALID, dtAvoidanceUtils::zero, 0.0f },
+		{ TObstacleHandle::INVALID, dtAvoidanceUtils::zero, 0.0f }
 	};
 
 	bool contains(const float angle)
@@ -144,12 +156,6 @@ public:
 	const VOEdge& left() const { return _edges[edgeLeftIndex]; }
 	const VOEdge& right() const { return _edges[edgeRightIndex]; }
 };
-
-template<typename TObstacleHandle>
-const float dtVO<TObstacleHandle>::eplision = 0.0001f;
-
-template<typename TObstacleHandle>
-const float dtVO<TObstacleHandle>::zero[3] = { 0.0f, 0.0f, 0.0f };
 
 template<typename TObstacleHandle>
 class dtAvoidExtraInfo
@@ -247,7 +253,7 @@ bool dtDetourAvoidanceQuery<TObstacleHandle>::addSegment(const TObstacleHandle& 
 	}
 	else
 	{
-		if (!rayIntersectWithSegment(_pos, _vel, p, q, htmin))
+		if (!dtAvoidanceUtils::isectRaySeg(_pos, _vel, p, q, htmin))
 			return false;
 	}
 
@@ -341,7 +347,7 @@ bool dtDetourAvoidanceQuery<TObstacleHandle>::queryAvoidDirection(float time, co
 	{
 		int side = (startIndex + index) % indexCount;
 		const float* dir = bestDirs[side];
-		if (dtAbs(dir[0]) > 0 && dtAbs(dir[1]) > 0 && dtAbs(dir[2]) > 0)
+		if (!dtAvoidanceUtils::isZeroVec(dir))
 		{
 			bestSide = side == TVO::edgeLeftIndex ? EAvoidSide::LEFT : EAvoidSide::RIGHT;
 			dtVcopy(bestDir, bestDirs[side]);

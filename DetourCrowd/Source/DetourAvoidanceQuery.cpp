@@ -2,9 +2,11 @@
 
 dtEdgeHandle dtEdgeHandle::INVALID;
 
-int rayIntersectWithSegment(const float* ap, const float* u,
-	const float* bp, const float* bq,
-	float& t)
+const float dtAvoidanceUtils::eplision = 0.0001f;
+
+const float dtAvoidanceUtils::zero[3] = {0.0f};
+
+int dtAvoidanceUtils::isectRaySeg(const float* ap, const float* u, const float* bp, const float* bq, float& t)
 {
 	float v[3], w[3];
 	dtVsub(v, bq, bp);
@@ -18,3 +20,4 @@ int rayIntersectWithSegment(const float* ap, const float* u,
 	if (s < 0 || s > 1) return 0;
 	return 1;
 }
+

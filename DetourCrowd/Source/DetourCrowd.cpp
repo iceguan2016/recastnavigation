@@ -1228,13 +1228,13 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 		if (m_convexObstacles && m_avoidanceQueryParams.enable)
 		{
 			bool isAvoidObstacle = false;
-			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->nvel, m_avoidanceQueryParams.timeHorizon);
+			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->dvel, m_avoidanceQueryParams.timeHorizon);
 			m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 				obs->ForeachSegement([&](const int index, const float* p0, const float* p1)->bool {
 					if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
 					{
 						dtConvexObstacleEdgeHandle nei(obs, index);
-						isAvoidObstacle |= m_avoidanceQuery.addSegment(nei, p0, p1);
+						isAvoidObstacle |= m_avoidanceQuery.addSegment(nei, p1, p0);
 					}
 					return true;
 				});

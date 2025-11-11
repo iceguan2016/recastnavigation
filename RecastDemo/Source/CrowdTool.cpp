@@ -604,6 +604,14 @@ void CrowdToolState::handleRender()
 					right[0], right[1], right[2],
 					0.0f, 0.2f, right_col, 1.0f);
 			}
+
+			unsigned int devl_col = duRGBA(255, 255, 0, 255);
+			float dvel_pos[3];
+			dtVadd(dvel_pos, ag->npos, ag->dvel);
+			duDebugDrawArrow(&dd,
+				ag->npos[0], ag->npos[1], ag->npos[2],
+				dvel_pos[0], dvel_pos[1], dvel_pos[2],
+				0.0f, 0.2f, devl_col, 1.0f);
 		}
 	}
 

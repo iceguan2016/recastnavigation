@@ -228,7 +228,7 @@ struct dtAvoidanceQueryParams
 {
 	bool enable = true;
 	float checkValidDeltaTime = 1.0f;
-	float timeHorizon = 0.5f;
+	float timeHorizon = 1.0f;
 };
 // end
 
