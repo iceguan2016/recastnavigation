@@ -181,7 +181,7 @@ public:
 	void reset()
 	{
 		_time = 0;
-		_handle = handle;
+		_handle = TObstacleHandle::INVALID;
 		_side = EAvoidSide::NONE;
 	}
 };

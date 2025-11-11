@@ -218,6 +218,14 @@ struct dtCrowdAgentDebugInfo
 	dtObstacleAvoidanceDebugData* vod;
 };
 
+// add by iceguan
+struct dtAvoidanceQueryParams
+{
+	bool enable = true;
+	float checkValidDeltaTime = 1.0f;
+};
+// end
+
 /// Provides local steering behaviors for a group of agents. 
 /// @ingroup crowd
 class dtCrowd
@@ -230,7 +238,7 @@ class dtCrowd
 
 	using TAvoidanceQuery = typename dtCrowdAgent::TAvoidanceQuery;
 
-	bool m_enableAvoidanceQuery;
+	dtAvoidanceQueryParams m_avoidanceQueryParams;
 	TAvoidanceQuery m_avoidanceQuery;
 	float m_elapsedTime;
 	// end
@@ -275,7 +283,7 @@ public:
 	~dtCrowd();
 
 	// add by iceguan
-	void setEnableAvoidanceQuery(bool val) { m_enableAvoidanceQuery = val; }
+	void setAvoidanceQueryParams(const dtAvoidanceQueryParams& val) { m_avoidanceQueryParams = val; }
 	void setVelocityProjectionMode(int val) { m_velocityProjectionMode = val; }
 	void setVelocityProjectionRadiusScale(float val) { m_velocityProjectionRadiusScale = val; }
 	void setConvexObstacleProximityDatabase(TConvexObstacleProximityDatabase* database) { m_convexObstacles = database; }

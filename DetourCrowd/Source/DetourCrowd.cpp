@@ -346,8 +346,7 @@ dtCrowd::dtCrowd() :
 	m_velocityProjectionMode(1),
 	m_convexObstacles(0),
 	m_queryConvexObstaclesRadius(6.0f),
-	m_elapsedTime(0),
-	m_enableAvoidanceQuery(true)
+	m_elapsedTime(0)
 	// end
 {
 }
@@ -1225,7 +1224,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 		}
 
 		// add by iceguan
-		if (m_convexObstacles && m_enableAvoidanceQuery)
+		if (m_convexObstacles && m_avoidanceQueryParams.enable)
 		{
 			bool isAvoidObstacle = false;
 			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->nvel, 0.5f);
@@ -1251,6 +1250,14 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 						dtVnormalize(dir);
 						dtVscale(dvel, dir, ag->params.maxSpeed);
 					}
+				}
+			}
+			else
+			{
+				float deltaTime = m_elapsedTime - ag->avoidExtraInfo._time;
+				if (!ag->avoidExtraInfo.isValid() || deltaTime >= m_avoidanceQueryParams.checkValidDeltaTime)
+				{
+					ag->avoidExtraInfo.reset();
 				}
 			}
 		}
