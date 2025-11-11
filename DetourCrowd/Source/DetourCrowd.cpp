@@ -345,7 +345,9 @@ dtCrowd::dtCrowd() :
 	m_velocityProjectionRadiusScale(1.2f),
 	m_velocityProjectionMode(1),
 	m_convexObstacles(0),
-	m_queryConvexObstaclesRadius(6.0f)
+	m_queryConvexObstaclesRadius(6.0f),
+	m_elapsedTime(0),
+	m_enableAvoidanceQuery(true)
 	// end
 {
 }
@@ -1056,6 +1058,9 @@ void dtCrowd::checkPathValidity(dtCrowdAgent** agents, const int nagents, const 
 	
 void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 {
+	// add by iceguan
+	m_elapsedTime += dt;
+	// end
 	m_velocitySampleCount = 0;
 	
 	const int debugIdx = debug ? debug->idx : -1;
@@ -1219,6 +1224,38 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			dtVscale(dvel, dvel, ag->desiredSpeed * speedScale);
 		}
 
+		// add by iceguan
+		if (m_convexObstacles && m_enableAvoidanceQuery)
+		{
+			bool isAvoidObstacle = false;
+			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->nvel, 0.5f);
+			m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
+				obs->ForeachSegement([&](const int index, const float* p0, const float* p1)->bool {
+					if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
+					{
+						dtConvexObstacleEdgeHandle nei(obs, index);
+						isAvoidObstacle |= m_avoidanceQuery.addSegment(nei, p0, p1);
+					}
+					return true;
+				});
+				return true;
+			});
+
+			if (isAvoidObstacle)
+			{
+				float dir[3] = { 0.0f };
+				if (m_avoidanceQuery.queryAvoidDirection(m_elapsedTime, ag->nvel, ag->avoidExtraInfo, dir))
+				{
+					if (dtVlenSqr(dir) > 0)
+					{
+						dtVnormalize(dir);
+						dtVscale(dvel, dir, ag->params.maxSpeed);
+					}
+				}
+			}
+		}
+		// end
+
 		// Separation
 		if (ag->params.updateFlags & DT_CROWD_SEPARATION)
 		{
@@ -1311,7 +1348,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 					if (obs->ContactEvaluateWithCircle(ag->npos, m_queryConvexObstaclesRadius, ag->params.height))
 					{
-						obs->ForeachSegement([&](const float* p0, const float* p1)->bool {
+						obs->ForeachSegement([&](const int index, const float* p0, const float* p1)->bool {
 							if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
 							{
 								m_obstacleQuery->addSegment(p0, p1);

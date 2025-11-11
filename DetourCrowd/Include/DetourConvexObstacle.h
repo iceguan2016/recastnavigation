@@ -40,7 +40,7 @@ struct dtContactInfo
 class dtConvexObstacle
 {
 public:
-	using TCallback = std::function<bool(const float* p0, const float* p1)>;
+	using TCallback = std::function<bool(const int index, const float* p0, const float* p1)>;
 
 	dtConvexObstacle()
 	{
@@ -95,5 +95,31 @@ public:
 
 typedef dtConvexObstacle* TConvexObstaclePtr;
 typedef dtLocalityProximityDatabase<TConvexObstaclePtr> TConvexObstacleProximityDatabase;
+
+struct dtConvexObstacleEdgeHandle
+{
+	static dtConvexObstacleEdgeHandle INVALID;
+
+	dtConvexObstacleEdgeHandle()
+		: _convex(nullptr), _edgeIndex(-1)
+	{
+	}
+
+	dtConvexObstacleEdgeHandle(const TConvexObstaclePtr& convex, int edgeIndex)
+		: _convex(convex), _edgeIndex(edgeIndex)
+	{
+	}
+
+	bool isValid() const { return _convex != 0 && _edgeIndex != -1; }
+
+	bool operator==(const dtConvexObstacleEdgeHandle& other)
+	{
+		return _convex == other._convex &&
+			_edgeIndex == other._edgeIndex;
+	}
+
+	TConvexObstaclePtr _convex;
+	int _edgeIndex;
+};
 
 #endif//DETOURCONVEXOBSTACLE_H

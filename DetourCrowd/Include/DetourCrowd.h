@@ -28,6 +28,7 @@
 // add by iceguan
 #include "DetourProximityDatabase.h"
 #include "DetourConvexObstacle.h"
+#include "DetourAvoidanceQuery.h"
 // end
 
 /// The maximum number of neighbors that a crowd agent can take into account
@@ -182,6 +183,11 @@ struct dtCrowdAgent
 	static const int MAX_OBSTACLE_CONTACTS = 10;
 	dtContactInfo contacts[MAX_OBSTACLE_CONTACTS];
 	int contactNum;
+
+	using TAvoidanceQuery = dtDetourAvoidanceQuery<dtConvexObstacleEdgeHandle>;
+	using TAvoidExtraInfo = typename TAvoidanceQuery::TAvoidExtraInfo;
+
+	TAvoidExtraInfo avoidExtraInfo;
 	// end
 };
 
@@ -221,6 +227,12 @@ class dtCrowd
 	float m_velocityProjectionRadiusScale;
 	TConvexObstacleProximityDatabase* m_convexObstacles;
 	float m_queryConvexObstaclesRadius;
+
+	using TAvoidanceQuery = typename dtCrowdAgent::TAvoidanceQuery;
+
+	bool m_enableAvoidanceQuery;
+	TAvoidanceQuery m_avoidanceQuery;
+	float m_elapsedTime;
 	// end
 
 	int m_maxAgents;
@@ -263,6 +275,7 @@ public:
 	~dtCrowd();
 
 	// add by iceguan
+	void setEnableAvoidanceQuery(bool val) { m_enableAvoidanceQuery = val; }
 	void setVelocityProjectionMode(int val) { m_velocityProjectionMode = val; }
 	void setVelocityProjectionRadiusScale(float val) { m_velocityProjectionRadiusScale = val; }
 	void setConvexObstacleProximityDatabase(TConvexObstacleProximityDatabase* database) { m_convexObstacles = database; }

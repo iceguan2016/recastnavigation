@@ -227,7 +227,7 @@ void dtBoxObstacle::ForeachSegement(TCallback func) const
 	for (int i = 0; i < 4; ++i)
 	{
 		int j = (i + 1) >= 4 ? 0 : i + 1;
-		func(world_vertices[i], world_vertices[j]);
+		func(i, world_vertices[i], world_vertices[j]);
 	}
 }
 
@@ -264,3 +264,6 @@ void dtBoxObstacle::UpdateAabb()
 	worldAabb[0][1] = worldCenter[1] - localExtent[1] / 2;
 	worldAabb[1][1] = worldCenter[1] + localExtent[1] / 2;
 }
+
+//////////////////////////////////////////////////////
+dtConvexObstacleEdgeHandle dtConvexObstacleEdgeHandle::INVALID;
