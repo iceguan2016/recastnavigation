@@ -77,6 +77,7 @@ struct CrowdToolParams
 	bool m_showDynamicObstacleDatabaseCells;
 	bool m_showDynamicObstacleSegments;
 	bool m_showDynamicObstacleContacts;
+	bool m_showAvoidanceVOs;
 	// end
 };
 

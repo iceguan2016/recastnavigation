@@ -186,8 +186,13 @@ struct dtCrowdAgent
 
 	using TAvoidanceQuery = dtDetourAvoidanceQuery<dtConvexObstacleEdgeHandle>;
 	using TAvoidExtraInfo = typename TAvoidanceQuery::TAvoidExtraInfo;
+	using TVO = typename TAvoidanceQuery::TVO;
 
 	TAvoidExtraInfo avoidExtraInfo;
+
+	static const int MAX_AVOIDANCE_VOS = 10;
+	TVO vos[MAX_AVOIDANCE_VOS];
+	int voNum;
 	// end
 };
 
@@ -223,6 +228,7 @@ struct dtAvoidanceQueryParams
 {
 	bool enable = true;
 	float checkValidDeltaTime = 1.0f;
+	float timeHorizon = 0.5f;
 };
 // end
 

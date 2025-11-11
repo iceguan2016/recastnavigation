@@ -1224,10 +1224,11 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 		}
 
 		// add by iceguan
+		ag->voNum = 0;
 		if (m_convexObstacles && m_avoidanceQueryParams.enable)
 		{
 			bool isAvoidObstacle = false;
-			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->nvel, 0.5f);
+			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->nvel, m_avoidanceQueryParams.timeHorizon);
 			m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 				obs->ForeachSegement([&](const int index, const float* p0, const float* p1)->bool {
 					if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
@@ -1259,6 +1260,15 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 				{
 					ag->avoidExtraInfo.reset();
 				}
+			}
+
+			// for debug draw
+			const auto& vos = m_avoidanceQuery.vos();
+			for(auto it = vos.begin(); it != vos.end(); ++it)
+			{
+				int index = ag->voNum;
+				ag->vos[index] = *it;
+				ag->voNum++;
 			}
 		}
 		// end

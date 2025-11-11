@@ -140,6 +140,9 @@ public:
 
 		return leftContain || rightContain;
 	}
+
+	const VOEdge& left() const { return _edges[edgeLeftIndex]; }
+	const VOEdge& right() const { return _edges[edgeRightIndex]; }
 };
 
 template<typename TObstacleHandle>
@@ -192,17 +195,19 @@ class dtDetourAvoidanceQuery
 public:
 	using TVO = dtVO<TObstacleHandle>;
 	using TAvoidExtraInfo = dtAvoidExtraInfo<TObstacleHandle>;
+	using TVOList = std::list<TVO>;
 
 	void init(const float* pos, const float radius, const float* vel, const float timeHorizon);
 	bool addSegment(const TObstacleHandle& nei, const float* start, const float* end);
 	bool queryAvoidDirection(float time, const float* nvel, TAvoidExtraInfo& info, float* outDir);
+	const TVOList& vos() const { return _vos; }
 
 private:
 	float _pos[3];
 	float _radius;
 	float _vel[3];
 	float _timeHorizon;
-	std::list<TVO> _vos;
+	TVOList _vos;
 };
 
 template<typename TObstacleHandle>

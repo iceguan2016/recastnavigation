@@ -129,6 +129,7 @@ CrowdToolState::CrowdToolState() :
 	m_toolParams.m_showDynamicObstacleDatabaseCells = false;
 	m_toolParams.m_showDynamicObstacleSegments = false;
 	m_toolParams.m_showDynamicObstacleContacts = false;
+	m_toolParams.m_showAvoidanceVOs = false;
 	// end
 	
 	memset(m_trails, 0, sizeof(m_trails));
@@ -574,6 +575,34 @@ void CrowdToolState::handleRender()
 					p0[0], p0[1], p0[2],
 					p1[0], p1[1], p1[2],
 					0.0f, 0.2f, col, 1.0f);
+			}
+		}
+
+		// Vos
+		if (m_toolParams.m_showAvoidanceVOs)
+		{
+			unsigned int left_col = duRGBA(255, 0, 0, 255);
+			unsigned int right_col = duRGBA(0, 255, 0, 255);
+			
+			const float len = 3.0f;
+
+			for (int k = 0; k < ag->voNum; ++k)
+			{
+				const auto& vo = ag->vos[k];
+
+				float left[3], right[3];
+				dtVmad(left, ag->npos, vo.left()._direction, len);
+				dtVmad(right, ag->npos, vo.right()._direction, len);
+
+				duDebugDrawArrow(&dd,
+					ag->npos[0], ag->npos[1], ag->npos[2],
+					left[0], left[1], left[2],
+					0.0f, 0.2f, left_col, 1.0f);
+
+				duDebugDrawArrow(&dd,
+					ag->npos[0], ag->npos[1], ag->npos[2],
+					right[0], right[1], right[2],
+					0.0f, 0.2f, right_col, 1.0f);
 			}
 		}
 	}
@@ -1069,6 +1098,9 @@ void CrowdTool::handleMenu()
 
 		if (imguiCheck("Show Obstacle Contacts", params->m_showDynamicObstacleContacts))
 			params->m_showDynamicObstacleContacts = !params->m_showDynamicObstacleContacts;
+
+		if (imguiCheck("Show Avoidance VOs", params->m_showAvoidanceVOs))
+			params->m_showAvoidanceVOs = !params->m_showAvoidanceVOs;
 
 		imguiUnindent();
 	}
