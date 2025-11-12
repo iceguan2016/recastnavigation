@@ -29,8 +29,8 @@ class dtGizmosDrawable
 public:
 	virtual ~dtGizmosDrawable() {}
 
-	virtual void DrawLine(const float* start, const float* end, const dtGizmosColor& color) = 0;
-	virtual void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color) = 0;
+	virtual void DrawLine(const float* start, const float* end, const dtGizmosColor& color, const float width=1.0f) = 0;
+	virtual void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color, const float width=1.0f) = 0;
 };
 
 struct dtGizmosToggles

@@ -1233,7 +1233,7 @@ void CrowdTool::handleRenderOverlay(double* proj, double* model, int* view)
 }
 
 // add by iceguan
-void GizmosDrawable::DrawLine(const float* start, const float* end, const dtGizmosColor& color)
+void GizmosDrawable::DrawLine(const float* start, const float* end, const dtGizmosColor& color, const float width)
 {
 	if (m_dd)
 	{
@@ -1248,7 +1248,7 @@ void GizmosDrawable::DrawLine(const float* start, const float* end, const dtGizm
 	}
 }
 
-void GizmosDrawable::DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color)
+void GizmosDrawable::DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color, const float width)
 {
 	if (m_dd)
 	{

@@ -35,9 +35,9 @@ public:
 	{
 	}
 
-	void DrawLine(const float* start, const float* end, const dtGizmosColor& color) override;
+	void DrawLine(const float* start, const float* end, const dtGizmosColor& color, const float width = 1.0f) override;
 
-	void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color) override;
+	void DrawAabb(const float* aabb_min, const float* aabb_max, const dtGizmosColor& color, const float width = 1.0f) override;
 
 protected:
 	duDebugDraw* m_dd;
