@@ -296,6 +296,8 @@ public:
 	TConvexObstacleProximityDatabase* getConvexObstacleProximityDatabase() const { return m_convexObstacles; }
 	void setQueryConvexObstaclesRadius(const float radius) { m_queryConvexObstaclesRadius = radius; }
 	void setAgentPosition(const int idx, const float* pos);
+
+	void updatePrepare(const float dt, dtCrowdAgentDebugInfo* debug);
 	// end
 	
 	/// Initializes the crowd.  

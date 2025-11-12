@@ -352,11 +352,11 @@ bool dtDetourAvoidanceQuery<TObstacleHandle>::queryAvoidDirection(float time, co
 	for (int index = 0; index < indexCount; ++index)
 	{
 		int side = (startIndex + index) % indexCount;
-		const float* dir = bestDirs[side];
-		if (!dtAvoidanceUtils::isZeroVec(dir))
+		const float* currDir = bestDirs[side];
+		if (!dtAvoidanceUtils::isZeroVec(currDir))
 		{
 			bestSide = side == TVO::edgeLeftIndex ? EAvoidSide::LEFT : EAvoidSide::RIGHT;
-			dtVcopy(bestDir, bestDirs[side]);
+			dtVcopy(bestDir, currDir);
 			break;
 		}
 	}

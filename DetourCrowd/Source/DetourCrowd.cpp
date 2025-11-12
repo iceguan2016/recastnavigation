@@ -1064,19 +1064,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 	dtCrowdAgent** agents = m_activeAgents;
 	int nagents = getActiveAgents(agents, m_maxAgents);
 
-	// add by iceguan
-	m_elapsedTime += dt;
-
-	for (int i = 0; i < nagents; ++i)
-	{
-		dtCrowdAgent* ag = agents[i];
-
-		if (ag->state != DT_CROWDAGENT_STATE_WALKING)
-		{
-			ag->avoidExtraInfo.reset();
-		}
-	}
-	// end
+	updatePrepare(dt, debug);
 
 	// Check that all agents still have valid paths.
 	checkPathValidity(agents, nagents, dt);
@@ -1373,23 +1361,29 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			if (m_convexObstacles)
 			{
 				ag->obstacleSegmentNum = 0;
+				float maxDistSq = dtSqr(ag->params.radius * 4);
 				m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 					if (obs->ContactEvaluateWithCircle(ag->npos, m_queryConvexObstaclesRadius, ag->params.height))
 					{
 						obs->ForeachSegement([&](const int index, const float* p0, const float* p1)->bool {
 							if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
 							{
-								m_obstacleQuery->addSegment(p0, p1);
-
-								if (ag->obstacleSegmentNum < dtCrowdAgent::MAX_OBSTACLE_SEGMENTS)
+								float t;
+								float distSq = dtDistancePtSegSqr2D(ag->npos, p0, p1, t);
+								if (distSq <= maxDistSq)
 								{
-									float* start = ag->obstacleSegments[ag->obstacleSegmentNum][0];
-									float* end = ag->obstacleSegments[ag->obstacleSegmentNum][1];
+									m_obstacleQuery->addSegment(p0, p1);
 
-									dtVcopy(start, p0);
-									dtVcopy(end, p1);
+									if (ag->obstacleSegmentNum < dtCrowdAgent::MAX_OBSTACLE_SEGMENTS)
+									{
+										float* start = ag->obstacleSegments[ag->obstacleSegmentNum][0];
+										float* end = ag->obstacleSegments[ag->obstacleSegmentNum][1];
 
-									ag->obstacleSegmentNum++;
+										dtVcopy(start, p0);
+										dtVcopy(end, p1);
+
+										ag->obstacleSegmentNum++;
+									}
 								}
 							}
 							return true;
@@ -1677,4 +1671,23 @@ void dtCrowd::setAgentPosition(const int idx, const float* pos)
 
 	dtVcopy(m_agents[idx].npos, pos);
 }
+
+void dtCrowd::updatePrepare(const float dt, dtCrowdAgentDebugInfo* debug)
+{
+	m_elapsedTime += dt;
+
+	dtCrowdAgent** agents = m_activeAgents;
+	int nagents = getActiveAgents(agents, m_maxAgents);
+
+	for (int i = 0; i < nagents; ++i)
+	{
+		dtCrowdAgent* ag = agents[i];
+
+		if (ag->state != DT_CROWDAGENT_STATE_WALKING)
+		{
+			ag->avoidExtraInfo.reset();
+		}
+	}
+}
+
 // end
