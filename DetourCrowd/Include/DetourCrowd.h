@@ -183,6 +183,7 @@ struct dtCrowdAgent
 	static const int MAX_OBSTACLE_CONTACTS = 10;
 	dtContactInfo contacts[MAX_OBSTACLE_CONTACTS];
 	int contactNum;
+	float lastHitObstacleElapsedTime = 0.0f;
 
 	using TAvoidanceQuery = dtDetourAvoidanceQuery<dtConvexObstacleEdgeHandle>;
 	using TAvoidExtraInfo = typename TAvoidanceQuery::TAvoidExtraInfo;
@@ -193,6 +194,9 @@ struct dtCrowdAgent
 	static const int MAX_AVOIDANCE_VOS = 10;
 	TVO vos[MAX_AVOIDANCE_VOS];
 	int voNum;
+
+	float voSegments[MAX_AVOIDANCE_VOS][2][3];
+	int voSegmentNum = 0;
 	// end
 };
 

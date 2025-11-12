@@ -257,7 +257,7 @@ bool dtDetourAvoidanceQuery<TObstacleHandle>::addSegment(const TObstacleHandle& 
 	{
 		float htmin1 = 0, htmin2 = 0; 
 		if (!dtAvoidanceUtils::isectRaySeg(_pos, _vel[0], p, q, htmin1) &&
-			!dtAvoidanceUtils::isectRaySeg(_pos, _vel[0], p, q, htmin2))
+			!dtAvoidanceUtils::isectRaySeg(_pos, _vel[1], p, q, htmin2))
 			return false;
 
 		htmin = dtMin(htmin1, htmin2);

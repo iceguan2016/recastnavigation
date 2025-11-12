@@ -1064,7 +1064,9 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 	dtCrowdAgent** agents = m_activeAgents;
 	int nagents = getActiveAgents(agents, m_maxAgents);
 
-	updatePrepare(dt, debug);
+		// add by iceguan
+		updatePrepare(dt, debug);
+		// end
 
 	// Check that all agents still have valid paths.
 	checkPathValidity(agents, nagents, dt);
@@ -1223,18 +1225,29 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 		}
 
 		// add by iceguan
-		ag->voNum = 0;
+		ag->voSegmentNum = 0;
 		if (m_convexObstacles && m_avoidanceQueryParams.enable)
 		{
 			bool isAvoidObstacle = false;
-			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->dvel, ag->nvel, m_avoidanceQueryParams.timeHorizon);
+			m_avoidanceQuery.init(ag->npos, ag->params.radius, dvel, ag->nvel, m_avoidanceQueryParams.timeHorizon);
 			m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 				obs->ForeachSegement([&](const int index, const float* p0, const float* p1)->bool {
 					if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)
 					{
 						dtConvexObstacleEdgeHandle nei(obs, index);
-						isAvoidObstacle |= m_avoidanceQuery.addSegment(nei, p1, p0);
-					}
+							if (m_avoidanceQuery.addSegment(nei, p0, p1))
+							{
+								if (ag->voSegmentNum < dtCrowdAgent::MAX_AVOIDANCE_VOS)
+								{
+									auto& voSegment = ag->voSegments[ag->voSegmentNum];
+									dtVcopy(voSegment[0], p1);
+									dtVcopy(voSegment[1], p0);
+
+									ag->voSegmentNum++;
+								}
+								isAvoidObstacle = true;
+							}
+						}
 					return true;
 				});
 				return true;
@@ -1251,6 +1264,9 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 						dtVscale(dvel, dir, ag->params.maxSpeed);
 					}
 				}
+
+				// 要避让动态障碍物，重置计时器
+				ag->lastHitObstacleElapsedTime = 0.0f;
 			}
 			else
 			{
@@ -1262,6 +1278,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 			}
 
 			// for debug draw
+			ag->voNum = 0;
 			const auto& vos = m_avoidanceQuery.vos();
 			for(auto it = vos.begin(); it != vos.end(); ++it)
 			{
@@ -1479,6 +1496,9 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 				}
 				return true;
 			});
+			// 要避让动态障碍物，重置计时器
+			if (ag->contactNum > 0)
+				ag->lastHitObstacleElapsedTime = 0.0f;
 		}
 	}
 
@@ -1688,9 +1708,13 @@ void dtCrowd::updatePrepare(const float dt, dtCrowdAgentDebugInfo* debug)
 
 		if (ag->state != DT_CROWDAGENT_STATE_WALKING)
 		{
+			ag->lastHitObstacleElapsedTime = 999999.0f;
 			ag->avoidExtraInfo.reset();
+		}
+		else
+		{
+			ag->lastHitObstacleElapsedTime += dt;
 		}
 	}
 }
-
 // end
