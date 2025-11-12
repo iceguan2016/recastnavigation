@@ -1057,15 +1057,26 @@ void dtCrowd::checkPathValidity(dtCrowdAgent** agents, const int nagents, const 
 	
 void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 {
-	// add by iceguan
-	m_elapsedTime += dt;
-	// end
 	m_velocitySampleCount = 0;
 	
 	const int debugIdx = debug ? debug->idx : -1;
 	
 	dtCrowdAgent** agents = m_activeAgents;
 	int nagents = getActiveAgents(agents, m_maxAgents);
+
+	// add by iceguan
+	m_elapsedTime += dt;
+
+	for (int i = 0; i < nagents; ++i)
+	{
+		dtCrowdAgent* ag = agents[i];
+
+		if (ag->state != DT_CROWDAGENT_STATE_WALKING)
+		{
+			ag->avoidExtraInfo.reset();
+		}
+	}
+	// end
 
 	// Check that all agents still have valid paths.
 	checkPathValidity(agents, nagents, dt);
@@ -1228,7 +1239,7 @@ void dtCrowd::update(const float dt, dtCrowdAgentDebugInfo* debug)
 		if (m_convexObstacles && m_avoidanceQueryParams.enable)
 		{
 			bool isAvoidObstacle = false;
-			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->dvel, m_avoidanceQueryParams.timeHorizon);
+			m_avoidanceQuery.init(ag->npos, ag->params.radius, ag->dvel, ag->nvel, m_avoidanceQueryParams.timeHorizon);
 			m_convexObstacles->ForeachByRadius(ag->npos, m_queryConvexObstaclesRadius, [&](const TConvexObstaclePtr& obs)->bool {
 				obs->ForeachSegement([&](const int index, const float* p0, const float* p1)->bool {
 					if (dtTriArea2D(ag->npos, p0, p1) >= 0.0f)

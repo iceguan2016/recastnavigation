@@ -203,7 +203,7 @@ public:
 	using TAvoidExtraInfo = dtAvoidExtraInfo<TObstacleHandle>;
 	using TVOList = std::list<TVO>;
 
-	void init(const float* pos, const float radius, const float* vel, const float timeHorizon);
+	void init(const float* pos, const float radius, const float* dvel, const float* nvel, const float timeHorizon);
 	bool addSegment(const TObstacleHandle& nei, const float* start, const float* end);
 	bool queryAvoidDirection(float time, const float* nvel, TAvoidExtraInfo& info, float* outDir);
 	const TVOList& vos() const { return _vos; }
@@ -211,17 +211,18 @@ public:
 private:
 	float _pos[3];
 	float _radius;
-	float _vel[3];
+	float _vel[2][3];
 	float _timeHorizon;
 	TVOList _vos;
 };
 
 template<typename TObstacleHandle>
-void dtDetourAvoidanceQuery<TObstacleHandle>::init(const float* pos, const float radius, const float* vel, const float timeHorizon)
+void dtDetourAvoidanceQuery<TObstacleHandle>::init(const float* pos, const float radius, const float* dvel, const float* nvel, const float timeHorizon)
 {
 	dtVcopy(_pos, pos);
 	_radius = radius;
-	dtVcopy(_vel, vel);
+	dtVcopy(_vel[0], dvel);
+	dtVcopy(_vel[1], nvel);
 	_timeHorizon = timeHorizon;
 	_vos.clear();
 }
@@ -246,15 +247,20 @@ bool dtDetourAvoidanceQuery<TObstacleHandle>::addSegment(const TObstacleHandle& 
 		snorm[0] = -sdir[2];
 		snorm[2] = sdir[0];
 		// If the velocity is pointing towards the segment, no collision.
-		if (dtVdot2D(snorm, _vel) < 0.0f)
+		if (dtVdot2D(snorm, _vel[0]) < 0.0f &&
+			dtVdot2D(snorm, _vel[1]) < 0.0f)
 			return false;
 		// Else immediate collision.
 		htmin = 0.0f;
 	}
 	else
 	{
-		if (!dtAvoidanceUtils::isectRaySeg(_pos, _vel, p, q, htmin))
+		float htmin1 = 0, htmin2 = 0; 
+		if (!dtAvoidanceUtils::isectRaySeg(_pos, _vel[0], p, q, htmin1) &&
+			!dtAvoidanceUtils::isectRaySeg(_pos, _vel[0], p, q, htmin2))
 			return false;
+
+		htmin = dtMin(htmin1, htmin2);
 	}
 
 	// The closest obstacle is somewhere ahead of us, keep track of nearest obstacle.
