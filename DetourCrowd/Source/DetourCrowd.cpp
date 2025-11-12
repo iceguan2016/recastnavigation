@@ -1683,6 +1683,9 @@ void dtCrowd::updatePrepare(const float dt, dtCrowdAgentDebugInfo* debug)
 	{
 		dtCrowdAgent* ag = agents[i];
 
+		ag->contactNum = 0;
+		ag->voNum = 0;
+
 		if (ag->state != DT_CROWDAGENT_STATE_WALKING)
 		{
 			ag->avoidExtraInfo.reset();
